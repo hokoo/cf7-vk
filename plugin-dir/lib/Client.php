@@ -122,6 +122,14 @@ class Client {
 		return $this->channels;
 	}
 
+	public function getLogger(): Logger {
+		if ( ! isset( $this->logger ) ) {
+			$this->logger = new Logger();
+		}
+
+		return $this->logger;
+	}
+
 	/**
 	 * Get all Bots.
 	 *

@@ -9,7 +9,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 use iTRON\cf7Vk\Collections\BotCollection;
 use iTRON\cf7Vk\Collections\ChatCollection;
 use iTRON\cf7Vk\Collections\FormCollection;
+use iTRON\cf7Vk\Exceptions\TransportNotConfigured;
+use iTRON\cf7Vk\Exceptions\VkApiException;
 use iTRON\wpConnections\Abstracts\Connection;
+use iTRON\wpConnections\Exceptions\ConnectionNotFound;
 use iTRON\wpConnections\Exceptions\ConnectionWrongData;
 use iTRON\wpConnections\Exceptions\MissingParameters;
 use iTRON\wpConnections\Exceptions\RelationNotFound;
@@ -214,18 +217,100 @@ class Channel extends Entity implements wpPostAble {
 
 		foreach ( $chats as $chat ) {
 			/** @var Chat $chat */
-			$bot->sendMessage(
-				$chat,
-				$message,
-				false,
-				array_merge(
+			try {
+				$chat_status = $chat->getConnectionStatus( $bot );
+			} catch ( ConnectionNotFound | RelationNotFound $e ) {
+				$exception_context = array_merge(
 					$context,
 					[
 						'channelId' => $this->getPost()->ID,
+						'stage' => 'status_lookup',
 					]
-				)
+				);
+
+				$this->logger->write(
+					[
+						'channelId' => $this->getPost()->ID,
+						'channelTitle' => $this->getTitle(),
+						'chatId' => $chat->getPost()->ID,
+						'chatPeerId' => $chat->getPeerId(),
+						'error' => $e->getMessage(),
+						'context' => $this->normalizeLogContext( $exception_context ),
+					],
+					'VK channel delivery status lookup failed.',
+					Logger::LEVEL_WARNING
+				);
+
+				do_action( 'cf7vk_delivery_exception', $e, $this, $chat, $exception_context );
+
+				continue;
+			}
+
+			if ( Chat::STATUS_ACTIVE !== $chat_status ) {
+				continue;
+			}
+
+			$delivery_context = array_merge(
+				$context,
+				[
+					'channelId' => $this->getPost()->ID,
+					'chatStatus' => $chat_status,
+				]
 			);
+
+			try {
+				$bot->sendMessage(
+					$chat,
+					$message,
+					true,
+					$delivery_context
+				);
+			} catch ( TransportNotConfigured | VkApiException $e ) {
+				$this->logger->write(
+					[
+						'channelId' => $this->getPost()->ID,
+						'channelTitle' => $this->getTitle(),
+						'chatId' => $chat->getPost()->ID,
+						'chatPeerId' => $chat->getPeerId(),
+						'chatStatus' => $chat_status,
+						'error' => $e->getMessage(),
+						'context' => $this->normalizeLogContext( $delivery_context ),
+					],
+					'VK channel delivery failed.',
+					Logger::LEVEL_WARNING
+				);
+
+				do_action( 'cf7vk_delivery_exception', $e, $this, $chat, $delivery_context );
+			}
 		}
+	}
+
+	private function normalizeLogContext( array $context ): array {
+		$normalized = [];
+
+		foreach ( $context as $key => $value ) {
+			$normalized[ $key ] = $this->normalizeLogValue( $value );
+		}
+
+		return $normalized;
+	}
+
+	private function normalizeLogValue( $value ) {
+		if ( null === $value || is_scalar( $value ) ) {
+			return $value;
+		}
+
+		if ( is_array( $value ) ) {
+			$normalized = [];
+
+			foreach ( $value as $key => $item ) {
+				$normalized[ $key ] = $this->normalizeLogValue( $item );
+			}
+
+			return $normalized;
+		}
+
+		return sprintf( '[object:%s]', get_class( $value ) );
 	}
 
 	protected function connectChannel( Channel $channel ): Entity {
