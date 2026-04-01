@@ -1,0 +1,19 @@
+/vendor/
+/plugin-dir/vendor/
+/wordpress/
+/wp-content/
+
+/index.php
+/*-config.php
+/.env
+*.sql
+*.tgz
+
+# logs
+/install/nginx/*
+/install/php-fpm/error.log
+
+# configs
+/.idea/
+/betas-content/
+/dev-content/

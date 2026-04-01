@@ -1,0 +1,186 @@
+<?php
+
+namespace iTRON\cf7Vk;
+
+if ( ! defined( 'ABSPATH' ) ) exit; // Exit if accessed directly
+
+use iTRON\cf7Vk\Collections\BotCollection;
+use iTRON\cf7Vk\Collections\ChannelCollection;
+use iTRON\cf7Vk\Controllers\CF7;
+use iTRON\cf7Vk\Controllers\RestApi;
+use iTRON\wpConnections;
+use iTRON\wpConnections\Exceptions\RelationNotFound;
+use iTRON\wpConnections\Query;
+use Exception;
+use WP_Query;
+use WPCF7_ContactForm;
+
+class Client {
+	private static Client $instance;
+	private static wpConnections\Client $connectionsClient;
+	private ChannelCollection $channels;
+	private Logger $logger;
+
+	const WPCONNECTIONS_CLIENT = 'cf7-vk';
+	const CPT_CHAT = 'cf7vk_chat';
+	const CPT_BOT = 'cf7vk_bot';
+	const CPT_CHANNEL = 'cf7vk_channel';
+	const CPT_CF7FORM = 'wpcf7_contact_form';
+	const CHAT2CHANNEL = 'chat2channel';
+	const FORM2CHANNEL = 'form2channel';
+	const BOT2CHANNEL = 'bot2channel';
+	const BOT2CHAT = 'bot2chat';
+
+	/**
+	 * Use get_instance() method for instance creating.
+	 */
+	protected function __construct() {}
+
+	protected function __clone() {}
+
+	/**
+	 * @throws Exception
+	 */
+	public function __wakeup() {
+		// Prevent deserialization of the instance.
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_trigger_error
+        trigger_error( 'Deserializing of iTRON\cf7Vk\Client() instance is prohibited.', E_USER_NOTICE );
+    }
+
+	public static function getInstance(): Client {
+		if ( empty( self::$instance ) ) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
+	}
+
+	public function init(): void {
+		$this->logger = new Logger();
+
+		$this->registerConnectionsClient();
+		RestApi::init();
+
+		add_action( 'wpcf7_before_send_mail', [ CF7::class, 'handleSubscribe' ], 99999, 3 );
+	}
+
+	private function registerConnectionsClient(): void {
+		$chat2channel = new Query\Relation();
+		$chat2channel
+			->set( 'name', self::CHAT2CHANNEL )
+			->set( 'from', self::CPT_CHAT )
+			->set( 'to', self::CPT_CHANNEL )
+			->set( 'cardinality', 'm-m' )
+			->set( 'duplicatable', false );
+
+		$bot2channel = new Query\Relation();
+		$bot2channel
+			->set( 'name', self::BOT2CHANNEL )
+			->set( 'from', self::CPT_BOT )
+			->set( 'to', self::CPT_CHANNEL )
+			->set( 'cardinality', '1-m' )
+			->set( 'duplicatable', false );
+
+		$form2channel = new Query\Relation();
+		$form2channel
+			->set( 'name', self::FORM2CHANNEL )
+			->set( 'from', self::CPT_CF7FORM )
+			->set( 'to', self::CPT_CHANNEL )
+			->set( 'cardinality', 'm-m' )
+			->set( 'duplicatable', false );
+
+		$bot2chat = new Query\Relation();
+		$bot2chat
+			->set( 'name', self::BOT2CHAT )
+			->set( 'from', self::CPT_BOT )
+			->set( 'to', self::CPT_CHAT )
+			->set( 'cardinality', 'm-m' )
+			->set( 'duplicatable', false );
+
+		try {
+			$this->getConnectionsClient()->registerRelation( $chat2channel );
+			$this->getConnectionsClient()->registerRelation( $bot2channel );
+			$this->getConnectionsClient()->registerRelation( $form2channel );
+			$this->getConnectionsClient()->registerRelation( $bot2chat );
+		} catch ( wpConnections\Exceptions\Exception $e ) {
+			$this->logger->write( $e->getMessage(), 'Can not register the relations.', Logger::LEVEL_CRITICAL );
+		}
+	}
+
+	public function getChannels(): ChannelCollection {
+		if ( ! isset( $this->channels ) ) {
+			$q = new WP_Query( [
+				'post_type' => self::CPT_CHANNEL,
+				'fields' => 'ids',
+				'posts_per_page' => -1,
+			] );
+
+			$this->channels = new ChannelCollection();
+			$this->channels->createByIDs( $q->posts );
+		}
+
+		return $this->channels;
+	}
+
+	/**
+	 * Get all Bots.
+	 *
+	 * @return BotCollection
+	 */
+	public function getBots(): BotCollection {
+		$q = new WP_Query( [
+			'post_type'     => self::CPT_BOT,
+			'fields'        => 'ids',
+			'posts_per_page'=> -1,
+		] );
+		$bots = new BotCollection();
+		$bots->createByIDs( $q->posts );
+		return $bots;
+	}
+
+
+	public function getConnectionsClient(): wpConnections\Client {
+		if ( empty( self::$connectionsClient ) ) {
+
+			add_filter(
+				'wpConnections/client/' . self::WPCONNECTIONS_CLIENT . '/clientDefaultCapabilities',
+				static function ( $defaultCapability ) {
+					$cf_cpt = get_post_type_object( WPCF7_ContactForm::post_type );
+					return $cf_cpt->cap->edit_posts ?? $defaultCapability;
+				}
+			);
+
+			self::$connectionsClient = new wpConnections\Client( self::WPCONNECTIONS_CLIENT );
+		}
+
+		return self::$connectionsClient;
+	}
+
+    /**
+     * @throws RelationNotFound
+     */
+    public function getBot2ChannelRelation(): wpConnections\Relation {
+		return $this->getConnectionsClient()->getRelation( self::BOT2CHANNEL );
+	}
+
+    /**
+     * @throws RelationNotFound
+     */
+    public function getChat2ChannelRelation(): wpConnections\Relation {
+		return $this->getConnectionsClient()->getRelation( self::CHAT2CHANNEL );
+	}
+
+    /**
+     * @throws RelationNotFound
+     */
+    public function getForm2ChannelRelation(): wpConnections\Relation {
+		return $this->getConnectionsClient()->getRelation( self::FORM2CHANNEL );
+	}
+
+	/**
+	 * @throws RelationNotFound
+	 */
+	public function getBot2ChatRelation(): wpConnections\Relation {
+		return $this->getConnectionsClient()->getRelation( self::BOT2CHAT );
+	}
+}

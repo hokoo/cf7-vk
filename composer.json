@@ -1,0 +1,41 @@
+{
+  "name": "hokoo/wpcf7_vk",
+  "description": "Development environment for the Contact Form 7 VK adapter plugin.",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Igor Tron",
+      "email": "public@itron.pro"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://wpackagist.org"
+    }
+  ],
+  "require": {
+    "composer/installers": "*",
+    "johnpbloch/wordpress": "^6.6",
+    "johnpbloch/wordpress-core-installer": "*",
+    "wpackagist-plugin/contact-form-7": "^6.0",
+    "wpackagist-plugin/plugin-check": "^1.8",
+    "wpackagist-plugin/wp-crontrol": "^1.19",
+    "wpackagist-plugin/wp-data-logger": "^2.0",
+    "wpackagist-plugin/wp-smtp": "^1.1"
+  },
+  "extra": {
+    "installer-paths": {
+      "wordpress/wp-content/plugins/{$name}": [
+        "type:wordpress-plugin"
+      ]
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "composer/installers": true,
+      "johnpbloch/wordpress-core-installer": true
+    },
+    "sort-packages": true
+  }
+}

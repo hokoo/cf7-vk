@@ -1,0 +1,139 @@
+body.wp-admin {
+  #settings-content {
+    font-family: "Open Sans", sans-serif;
+  }
+}
+
+.screen-description {
+  max-width: 900px;
+  margin: 0 0 24px;
+  color: #50575e;
+}
+
+.cf7vk-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.cf7vk-sidebar,
+.cf7vk-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cf7vk-main {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.cf7vk-card {
+  background: #fff;
+  border: 1px solid #dcdcde;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+
+  h2,
+  h3 {
+    margin-top: 0;
+  }
+}
+
+.cf7vk-card-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cf7vk-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin-top: 12px;
+}
+
+.cf7vk-meta dt {
+  font-weight: 600;
+}
+
+.cf7vk-meta dd {
+  margin: 0;
+}
+
+.cf7vk-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cf7vk-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.cf7vk-form input,
+.cf7vk-form select {
+  font-weight: 400;
+}
+
+.cf7vk-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  padding: 24px;
+  background: #fff;
+  border: 1px dashed #c3c4c7;
+  border-radius: 8px;
+  color: #50575e;
+}
+
+.cf7vk-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cf7vk-status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c3c4c7;
+}
+
+.cf7vk-status.online::before {
+  background: #00a32a;
+}
+
+.cf7vk-status.offline::before {
+  background: #d63638;
+}
+
+.cf7vk-list {
+  margin: 12px 0 0;
+  padding-left: 18px;
+}
+
+.cf7vk-list li + li {
+  margin-top: 4px;
+}
+
+@media (max-width: 1024px) {
+  .cf7vk-layout,
+  .cf7vk-main {
+    grid-template-columns: 1fr;
+  }
+}
