@@ -8,7 +8,8 @@ import {
     apiDeleteChannel,
     apiDisconnectBotFromChannel,
     apiDisconnectChatFromChannel,
-    apiDisconnectFormFromChannel
+    apiDisconnectFormFromChannel,
+    apiSaveChannel
 } from '../utils/api';
 
 const Channel = ({
@@ -22,6 +23,7 @@ const Channel = ({
     form2ChannelConnections,
     onUpdated
 }) => {
+    const [title, setTitle] = useState(channel.title?.rendered || '');
     const [saving, setSaving] = useState(false);
 
     const botConnection = useMemo(
@@ -51,6 +53,24 @@ const Channel = ({
     const getFormTitle = (form) => form?.title?.rendered || form?.title || `#${form.id}`;
     const getBotTitle = (bot) => bot?.title?.rendered || bot?.title || `#${bot.id}`;
     const getChatTitle = (chat) => chat?.title?.rendered || chat?.displayName || `#${chat.id}`;
+
+    const saveTitle = async (event) => {
+        event.preventDefault();
+        const nextTitle = title.trim();
+
+        if (!nextTitle) {
+            return;
+        }
+
+        setSaving(true);
+
+        try {
+            await apiSaveChannel(channel.id, {title: nextTitle});
+            await onUpdated();
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const onBotChange = async (event) => {
         const nextBotId = event.target.value;
@@ -128,7 +148,18 @@ const Channel = ({
 
     return (
         <article className="cf7vk-card">
-            <h3>{channel.title?.rendered || wp.i18n.__( 'Untitled channel', 'cf7-vk' )}</h3>
+            <form className="cf7vk-form" onSubmit={saveTitle}>
+                <label>
+                    <span>{wp.i18n.__( 'Channel title', 'cf7-vk' )}</span>
+                    <input value={title} onChange={(event) => setTitle(event.target.value)} disabled={saving} />
+                </label>
+
+                <div className="cf7vk-actions">
+                    <button className="button button-primary" type="submit" disabled={saving || !title.trim()}>
+                        {wp.i18n.__( 'Save channel', 'cf7-vk' )}
+                    </button>
+                </div>
+            </form>
 
             <label className="cf7vk-form">
                 <span>{wp.i18n.__( 'Assigned bot', 'cf7-vk' )}</span>
@@ -172,6 +203,8 @@ const Channel = ({
                         <li>{wp.i18n.__( 'No linked dialogs are available for this bot yet.', 'cf7-vk' )}</li>
                     ) : availableChats.map((chat) => {
                         const isLinked = linkedChatIds.includes(chat.id);
+                        const botChatConnection = botChatConnections.find((item) => item?.data?.to === chat.id);
+                        const status = botChatConnection?.data?.meta?.status?.[0] || 'pending';
 
                         return (
                             <li key={chat.id}>
@@ -180,15 +213,18 @@ const Channel = ({
                                         type="checkbox"
                                         checked={isLinked}
                                         onChange={() => toggleChat(chat.id, isLinked)}
-                                        disabled={saving}
+                                        disabled={saving || (!isLinked && status !== 'active')}
                                     />
                                     {' '}
-                                    {getChatTitle(chat)}
+                                    {getChatTitle(chat)} <span className={`cf7vk-inline-status ${status}`}>{status}</span>
                                 </label>
                             </li>
                         );
                     })}
                 </ul>
+                <p className="cf7vk-hint">
+                    {wp.i18n.__( 'Only active dialogs can receive form notifications and be attached to a channel.', 'cf7-vk' )}
+                </p>
             </div>
 
             <div>

@@ -18,7 +18,10 @@
 - **Эпик 1 завершён**: перенесены plugin shell, CPT, сущности, связи, REST-слой, React admin shell и dev-окружение.
 - **Эпик 2 завершён**: добавлены VK API wrapper, проверка доступа к сообществу, сохранение Long Poll bootstrap state и примитив исходящей отправки через `messages.send`.
 - **Эпик 3 завершён**: реализованы Long Poll polling, обработка `failed=1/2/3`, обнаружение `message_new`, создание/обновление VK-диалогов и привязка по `authCommand`.
-- **Следующий фокус**: доработать UX admin UI и затем закрыть delivery-format/doc workflow.
+- **Эпик 4 завершён**: модель `Chat` и routing-слой адаптированы под `peer_id`, типы диалогов и статусы `pending/active/muted`.
+- **Эпик 5 завершён**: добавлен VK-oriented formatter для CF7 и доставка уведомлений как нормализованного plain-text сообщения.
+- **Эпик 6 завершён**: админка доведена до VK onboarding flow, включая управление статусами диалогов, copyable auth command и routing только в active dialogs.
+- **Эпик 7 завершён**: обновлены README/readme, описан VK setup и уточнён локальный dev workflow.
 
 ## Эпики
 

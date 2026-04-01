@@ -33,6 +33,9 @@ const Settings = () => {
     return (
         <section className="cf7vk-card">
             <h2>{wp.i18n.__( 'Plugin settings', 'cf7-vk' )}</h2>
+            <p className="cf7vk-hint">
+                {wp.i18n.__( 'Long Poll discovery runs manually from each bot card. Enable pre-releases only if you want experimental updates.', 'cf7-vk' )}
+            </p>
             {!loaded ? (
                 <div>{wp.i18n.__( 'Loading settings...', 'cf7-vk' )}</div>
             ) : (

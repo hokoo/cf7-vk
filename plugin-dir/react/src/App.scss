@@ -82,6 +82,41 @@ body.wp-admin {
   font-weight: 400;
 }
 
+.cf7vk-hint {
+  margin: 0;
+  color: #646970;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cf7vk-copy-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cf7vk-inline-status {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #646970;
+}
+
+.cf7vk-inline-status.active {
+  color: #00a32a;
+}
+
+.cf7vk-inline-status.pending {
+  color: #dba617;
+}
+
+.cf7vk-inline-status.muted {
+  color: #646970;
+}
+
 .cf7vk-actions {
   display: flex;
   gap: 8px;

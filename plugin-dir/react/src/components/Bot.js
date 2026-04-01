@@ -14,7 +14,7 @@ const getConnectionStatus = (botId, chatId, connections) => {
     const relation = connections.find((item) => item?.data?.from === botId && item?.data?.to === chatId);
     const status = relation?.data?.meta?.status?.[0];
 
-    return status || 'active';
+    return status || 'pending';
 };
 
 const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
@@ -109,6 +109,21 @@ const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
         } finally {
             setFetching(false);
             await onUpdated();
+        }
+    };
+
+    const copyAuthCommand = async () => {
+        try {
+            await navigator.clipboard.writeText(form.authCommand);
+            setFeedback({
+                type: 'success',
+                message: wp.i18n.__( 'Authorization command copied.', 'cf7-vk' )
+            });
+        } catch (error) {
+            setFeedback({
+                type: 'warning',
+                message: wp.i18n.__( 'Copy the authorization command manually.', 'cf7-vk' )
+            });
         }
     };
 
@@ -209,6 +224,10 @@ const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
                     <input value={form.authCommand} onChange={updateField('authCommand')} />
                 </label>
 
+                <p className="cf7vk-hint">
+                    {wp.i18n.__( 'The command is matched strictly after trim, without alias expansion.', 'cf7-vk' )}
+                </p>
+
                 {feedback ? (
                     <div className={`cf7vk-notice ${feedback.type}`}>
                         <strong>{feedback.message}</strong>
@@ -238,6 +257,13 @@ const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
                     <dd>{longPollState}</dd>
                     <dt>{wp.i18n.__( 'Last sync', 'cf7-vk' )}</dt>
                     <dd>{lastSyncAt}</dd>
+                    <dt>{wp.i18n.__( 'Auth command', 'cf7-vk' )}</dt>
+                    <dd className="cf7vk-copy-row">
+                        <code>{form.authCommand}</code>
+                        <button className="button button-small" type="button" onClick={copyAuthCommand}>
+                            {wp.i18n.__( 'Copy', 'cf7-vk' )}
+                        </button>
+                    </dd>
                 </dl>
 
                 <div className="cf7vk-actions">
@@ -257,6 +283,9 @@ const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
 
                 <div>
                     <strong>{wp.i18n.__( 'Linked dialogs', 'cf7-vk' )}</strong>
+                    <p className="cf7vk-hint">
+                        {wp.i18n.__( 'Pending dialogs are discovered but do not receive notifications until activated.', 'cf7-vk' )}
+                    </p>
                     <ul className="cf7vk-list">
                         {chatsForBot.length === 0 ? (
                             <li>{wp.i18n.__( 'No dialogs linked yet.', 'cf7-vk' )}</li>

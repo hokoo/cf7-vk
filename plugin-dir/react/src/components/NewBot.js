@@ -66,6 +66,10 @@ const NewBot = ({onCreated}) => {
                     <input value={form.authCommand} onChange={updateField('authCommand')} />
                 </label>
 
+                <p className="cf7vk-hint">
+                    {wp.i18n.__( 'Users must send this exact command to the community before the dialog can be linked.', 'cf7-vk' )}
+                </p>
+
                 <div className="cf7vk-actions">
                     <button className="button button-primary" type="submit" disabled={saving}>
                         {wp.i18n.__( 'Create bot', 'cf7-vk' )}

@@ -97,6 +97,12 @@ export const apiCreateChannel = async (title) => apiRequest(
     }
 );
 
+export const apiSaveChannel = async (channelId, payload) => apiRequest(
+    `${cf7VkData.routes.channels}${channelId}`,
+    'POST',
+    payload
+);
+
 export const apiDeleteChannel = async (channelId) => apiRequest(
     `${cf7VkData.routes.channels}${channelId}/?force=true`,
     'DELETE'
