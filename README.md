@@ -41,6 +41,8 @@ npm run build
 
 `make setup.all` now mirrors the original project bootstrap more closely: it creates `.env`, generates nginx configs, starts Docker, installs root and plugin Composer dependencies inside the PHP container, prepares `dev-content` / `betas-content`, creates the `dev-content/plugins/cf7-vk -> plugin-dir` symlink, generates `index.php` / config files, and can initialize the dev+betas WordPress databases interactively.
 
+The default local PHP runtime is pinned through `PHP_TAG=8.4` in `install/.example/.env.example`, paired with a newer `wodby/wordpress-php` base image so that bundled WP-CLI stays quiet during setup on PHP 8.4 without a custom phar override.
+
 Useful commands:
 
 ```bash
