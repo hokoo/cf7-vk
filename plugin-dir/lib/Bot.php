@@ -6,9 +6,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use iTRON\cf7Vk\Exceptions\TransportNotConfigured;
+use iTRON\cf7Vk\Exceptions\VkApiException;
 use iTRON\wpConnections\Connection;
 use iTRON\wpConnections\Exceptions\ConnectionWrongData;
-use iTRON\wpConnections\Exceptions\Exception;
+use iTRON\wpConnections\Exceptions\Exception as ConnectionException;
 use iTRON\wpConnections\Exceptions\MissingParameters;
 use iTRON\wpConnections\Exceptions\RelationNotFound;
 use iTRON\wpConnections\Query;
@@ -17,6 +19,7 @@ use iTRON\wpPostAble\Exceptions\wppaLoadPostException;
 use iTRON\wpPostAble\Exceptions\wppaSavePostException;
 use iTRON\wpPostAble\wpPostAble;
 use iTRON\wpPostAble\wpPostAbleTrait;
+use Throwable;
 
 class Bot extends Entity implements wpPostAble {
 	use wpPostAbleTrait;
@@ -29,6 +32,7 @@ class Bot extends Entity implements wpPostAble {
 	public const DEFAULT_API_VERSION = '5.199';
 	public const DEFAULT_AUTH_COMMAND = 'start';
 	public const EMPTY_SECRET_MASK = '[%s]';
+	private ?VkApi $api = null;
 
 	/**
 	 * @throws wppaLoadPostException
@@ -45,6 +49,16 @@ class Bot extends Entity implements wpPostAble {
 			self::EMPTY_SECRET_MASK,
 			_x( 'empty', 'Empty access token field', 'cf7-vk' )
 		);
+	}
+
+	public static function isMaskedSecretValue( ?string $value ): bool {
+		if ( ! is_string( $value ) ) {
+			return false;
+		}
+
+		$value = trim( $value );
+
+		return '' !== $value && 1 === preg_match( '/^\[[^\]]*]$/', $value );
 	}
 
 	public function getAccessTokenConstName(): string {
@@ -69,6 +83,7 @@ class Bot extends Entity implements wpPostAble {
 	public function setAccessToken( string $token ): self {
 		$this->setParam( 'accessToken', trim( $token ) );
 		$this->savePost();
+		$this->api = null;
 
 		return $this;
 	}
@@ -76,9 +91,7 @@ class Bot extends Entity implements wpPostAble {
 	public function isAccessTokenEmpty(): bool {
 		$token = $this->getAccessToken();
 
-		return
-			empty( $token ) ||
-			$token !== rtrim( ltrim( $token, '[' ), ']' );
+		return empty( $token ) || self::isMaskedSecretValue( $token );
 	}
 
 	public function getGroupIdConstName(): string {
@@ -117,6 +130,7 @@ class Bot extends Entity implements wpPostAble {
 	public function setApiVersion( string $api_version ): self {
 		$this->setParam( 'apiVersion', trim( $api_version ) ?: self::DEFAULT_API_VERSION );
 		$this->savePost();
+		$this->api = null;
 
 		return $this;
 	}
@@ -256,7 +270,7 @@ class Bot extends Entity implements wpPostAble {
 			return $this->client
 				->getBot2ChatRelation()
 				->createConnection( new Query\Connection( $this->getPost()->ID, $chat->getPost()->ID ) );
-		} catch ( Exception $e ) {
+		} catch ( ConnectionException $e ) {
 			$this->logger->write( $e->getMessage(), 'Unable to connect bot and chat.', Logger::LEVEL_CRITICAL );
 		}
 
@@ -271,6 +285,226 @@ class Bot extends Entity implements wpPostAble {
 			->getBot2ChatRelation()
 			->detachConnections( new Query\Connection( $this->getPost()->ID, $chat->getPost()->ID ) );
 
+		foreach ( $this->getChannels() as $channel ) {
+			/** @var Channel $channel */
+			if ( ! $channel->hasChat( $chat ) ) {
+				continue;
+			}
+
+			$channel->disconnectChat( $chat );
+		}
+
 		return $this;
+	}
+
+	/**
+	 * @throws RelationNotFound
+	 */
+	public function hasChat( Chat $chat ): bool {
+		return $this->getChats()->contains( $chat );
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 * @throws VkApiException
+	 */
+	public function verifyConnection(): array {
+		try {
+			$group_id = $this->getNormalizedGroupId();
+			$community = $this->getApi()->getCommunity( $group_id );
+
+			$details = [
+				'groupId' => $group_id,
+				'communityName' => (string) ( $community['name'] ?? $community['screen_name'] ?? $this->getTitle() ),
+				'longPollReady' => false,
+				'longPollError' => '',
+			];
+
+			try {
+				$long_poll = $this->getApi()->getLongPollServer( $group_id );
+				$timestamp = gmdate( 'c' );
+
+				$this->persistStateSafely(
+					[
+						'lastStatus' => self::STATUS_ONLINE,
+						'longPollServer' => (string) ( $long_poll['server'] ?? '' ),
+						'longPollKey' => (string) ( $long_poll['key'] ?? '' ),
+						'longPollTs' => (string) ( $long_poll['ts'] ?? '' ),
+						'lastSyncAt' => $timestamp,
+					]
+				);
+
+				$details['longPollReady'] = true;
+				$details['longPollServer'] = (string) ( $long_poll['server'] ?? '' );
+				$details['longPollTs'] = (string) ( $long_poll['ts'] ?? '' );
+				$details['lastSyncAt'] = $timestamp;
+			} catch ( VkApiException $e ) {
+				$this->persistStateSafely(
+					[
+						'lastStatus' => self::STATUS_ONLINE,
+						'longPollServer' => '',
+						'longPollKey' => '',
+						'longPollTs' => '',
+						'lastSyncAt' => '',
+					]
+				);
+
+				$this->logger->write(
+					[
+						'botTitle' => $this->getTitle(),
+						'wpPostID' => $this->getPost()->ID,
+						'groupId' => $group_id,
+						'error' => $e->getMessage(),
+					],
+					'VK Long Poll is unavailable.',
+					Logger::LEVEL_WARNING
+				);
+
+				$details['longPollError'] = $e->getMessage();
+			}
+
+			return $details;
+		} catch ( TransportNotConfigured | VkApiException $e ) {
+			$this->markTransportFailure(
+				$e,
+				'VK community verification failed.',
+				Logger::LEVEL_WARNING,
+				[
+					'groupId' => $this->getGroupId(),
+				]
+			);
+
+			throw $e;
+		}
+	}
+
+	public function ping(): bool {
+		try {
+			$this->verifyConnection();
+
+			return true;
+		} catch ( TransportNotConfigured | VkApiException $e ) {
+			return false;
+		}
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 * @throws VkApiException
+	 */
+	public function sendMessage( Chat $chat, string $message, bool $throw_on_error = true, array $extra = [] ): ?int {
+		try {
+			$message_id = $this->getApi()->sendMessage(
+				$chat->getPeerId(),
+				$message
+			);
+
+			$this->persistStateSafely(
+				[
+					'lastStatus' => self::STATUS_ONLINE,
+				]
+			);
+
+			return $message_id;
+		} catch ( TransportNotConfigured | VkApiException $e ) {
+			$this->markTransportFailure(
+				$e,
+				'VK delivery failed.',
+				Logger::LEVEL_CRITICAL,
+				[
+					'chatPeerId' => $chat->getPeerId(),
+					'chatTitle' => $chat->getTitle(),
+					'chatPostID' => $chat->getPost()->ID,
+					'extras' => $extra,
+				]
+			);
+
+			if ( $throw_on_error ) {
+				throw $e;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 */
+	private function getApi(): VkApi {
+		if ( null === $this->api ) {
+			$access_token = $this->getAccessToken();
+
+			if ( empty( $access_token ) || $this->isAccessTokenEmpty() ) {
+				throw new TransportNotConfigured( __( 'VK access token is not configured.', 'cf7-vk' ) );
+			}
+
+			$this->api = new VkApi( $access_token, $this->getApiVersion() );
+		}
+
+		return $this->api;
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 */
+	private function getNormalizedGroupId(): string {
+		$group_id = trim( $this->getGroupId() );
+
+		if ( '' === $group_id ) {
+			throw new TransportNotConfigured( __( 'VK group ID is not configured.', 'cf7-vk' ) );
+		}
+
+		if ( 1 !== preg_match( '/^-?\d+$/', $group_id ) ) {
+			throw new TransportNotConfigured( __( 'VK group ID must be a numeric value.', 'cf7-vk' ) );
+		}
+
+		return ltrim( $group_id, '-' );
+	}
+
+	private function persistStateSafely( array $params ): void {
+		foreach ( $params as $key => $value ) {
+			$this->setParam( $key, $value );
+		}
+
+		try {
+			$this->savePost();
+		} catch ( wppaSavePostException $e ) {
+			$this->logger->write(
+				[
+					'botTitle' => $this->getTitle(),
+					'wpPostID' => $this->getPost()->ID,
+					'error' => $e->getMessage(),
+					'params' => $params,
+				],
+				'VK bot state could not be persisted.',
+				Logger::LEVEL_WARNING
+			);
+		}
+	}
+
+	private function markTransportFailure(
+		Throwable $exception,
+		string $title,
+		int $level = Logger::LEVEL_WARNING,
+		array $context = []
+	): void {
+		$this->persistStateSafely(
+			[
+				'lastStatus' => self::STATUS_OFFLINE,
+			]
+		);
+
+		$this->logger->write(
+			array_merge(
+				[
+					'botTitle' => $this->getTitle(),
+					'wpPostID' => $this->getPost()->ID,
+					'error' => $exception->getMessage(),
+				],
+				$context
+			),
+			$title,
+			$level
+		);
 	}
 }

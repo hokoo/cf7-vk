@@ -15,6 +15,7 @@ use iTRON\wpConnections\Meta;
 use iTRON\wpConnections\Query;
 use iTRON\wpPostAble\Exceptions\wppaCreatePostException;
 use iTRON\wpPostAble\Exceptions\wppaLoadPostException;
+use iTRON\wpPostAble\Exceptions\wppaSavePostException;
 use iTRON\wpPostAble\wpPostAble;
 use iTRON\wpPostAble\wpPostAbleTrait;
 
@@ -42,6 +43,7 @@ class Chat extends Entity implements wpPostAble {
 
 	public function setPeerId( string $peer_id ): self {
 		$this->setParam( 'peerId', trim( $peer_id ) );
+		$this->savePost();
 
 		return $this;
 	}
@@ -52,6 +54,7 @@ class Chat extends Entity implements wpPostAble {
 
 	public function setUserId( string $user_id ): self {
 		$this->setParam( 'userId', trim( $user_id ) );
+		$this->savePost();
 
 		return $this;
 	}
@@ -62,6 +65,7 @@ class Chat extends Entity implements wpPostAble {
 
 	public function setChatType( string $chat_type ): self {
 		$this->setParam( 'chatType', trim( $chat_type ) );
+		$this->savePost();
 
 		return $this;
 	}
@@ -72,6 +76,7 @@ class Chat extends Entity implements wpPostAble {
 
 	public function setDisplayName( string $display_name ): self {
 		$this->setParam( 'displayName', trim( $display_name ) );
+		$this->savePost();
 
 		return $this;
 	}
@@ -82,6 +87,7 @@ class Chat extends Entity implements wpPostAble {
 
 	public function setUsername( string $username ): self {
 		$this->setParam( 'username', trim( $username ) );
+		$this->savePost();
 
 		return $this;
 	}
@@ -92,6 +98,7 @@ class Chat extends Entity implements wpPostAble {
 
 	public function setConnectedAt( string $connected_at ): self {
 		$this->setParam( 'connectedAt', trim( $connected_at ) );
+		$this->savePost();
 
 		return $this;
 	}
@@ -160,6 +167,17 @@ class Chat extends Entity implements wpPostAble {
 		$connection->update();
 
 		return $this;
+	}
+
+	/**
+	 * @throws ConnectionNotFound
+	 * @throws RelationNotFound
+	 */
+	public function getConnectionStatus( Bot $bot ): string {
+		$connection = $this->getBotConnection( $bot );
+		$meta = $connection->meta->where( 'key', self::STATUS_KEY )->first();
+
+		return $meta ? (string) $meta->value : self::STATUS_PENDING;
 	}
 
 	/**

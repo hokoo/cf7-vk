@@ -198,11 +198,34 @@ class Channel extends Entity implements wpPostAble {
 	}
 
 	public function doSendOut( string $message, array $context = [] ): void {
-		/**
-		 * Transport delivery is implemented in later epics.
-		 * The shell still exposes a stable hook so the submission flow remains wired.
-		 */
 		do_action( 'cf7vk_channel_sendout', $this, $message, $context );
+
+		$bot = $this->getBot();
+
+		if ( ! $bot ) {
+			return;
+		}
+
+		$chats = $this->getChats();
+
+		if ( $chats->isEmpty() ) {
+			return;
+		}
+
+		foreach ( $chats as $chat ) {
+			/** @var Chat $chat */
+			$bot->sendMessage(
+				$chat,
+				$message,
+				false,
+				array_merge(
+					$context,
+					[
+						'channelId' => $this->getPost()->ID,
+					]
+				)
+			);
+		}
 	}
 
 	protected function connectChannel( Channel $channel ): Entity {

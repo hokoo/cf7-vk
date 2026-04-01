@@ -44,11 +44,21 @@ class RestApi {
 					$bot = new Bot( $object['id'] );
 					$token = $bot->getAccessToken();
 
-					return $token ? $token : Bot::getEmptySecret();
+					if ( $bot->isAccessTokenDefined() || empty( $token ) ) {
+						return Bot::getEmptySecret();
+					}
+
+					return $token;
 				},
 				'update_callback' => static function ( $updated_value, $wp_post ) {
+					$updated_value = is_string( $updated_value ) ? trim( $updated_value ) : '';
+
+					if ( Bot::isMaskedSecretValue( $updated_value ) ) {
+						return true;
+					}
+
 					try {
-						( new Bot( $wp_post->ID ) )->setAccessToken( (string) $updated_value );
+						( new Bot( $wp_post->ID ) )->setAccessToken( $updated_value );
 					} catch ( wppaSavePostException $e ) {
 						return false;
 					}
@@ -92,6 +102,34 @@ class RestApi {
 
 		register_rest_field(
 			Client::CPT_BOT,
+			'isGroupIdDefinedByConst',
+			[
+				'get_callback' => static function ( $object ) {
+					return ( new Bot( $object['id'] ) )->isGroupIdDefined();
+				},
+				'schema' => [
+					'description' => 'Whether the group ID is defined by PHP constant.',
+					'type' => 'boolean',
+				],
+			]
+		);
+
+		register_rest_field(
+			Client::CPT_BOT,
+			'groupIdConst',
+			[
+				'get_callback' => static function ( $object ) {
+					return ( new Bot( $object['id'] ) )->getGroupIdConstName();
+				},
+				'schema' => [
+					'description' => 'PHP constant name for the group ID.',
+					'type' => 'string',
+				],
+			]
+		);
+
+		register_rest_field(
+			Client::CPT_BOT,
 			'accessTokenConst',
 			[
 				'get_callback' => static function ( $object ) {
@@ -108,6 +146,9 @@ class RestApi {
 		self::registerBotMetaField( 'apiVersion', 'Configured VK API version.' );
 		self::registerBotMetaField( 'authCommand', 'Authorization command for initial linking.' );
 		self::registerBotMetaField( 'lastStatus', 'Last known transport status.' );
+		self::registerBotMetaField( 'longPollServer', 'Current VK Long Poll server URL.' );
+		self::registerBotMetaField( 'longPollTs', 'Current VK Long Poll timestamp.' );
+		self::registerBotMetaField( 'lastSyncAt', 'Time of the latest successful VK sync.' );
 	}
 
 	private static function registerBotMetaField( string $field, string $description ): void {
@@ -127,6 +168,12 @@ class RestApi {
 							return $bot->getAuthCommand();
 						case 'lastStatus':
 							return $bot->getLastStatus();
+						case 'longPollServer':
+							return $bot->getLongPollServer();
+						case 'longPollTs':
+							return $bot->getLongPollTs();
+						case 'lastSyncAt':
+							return $bot->getLastSyncAt();
 						default:
 							return null;
 					}
@@ -147,6 +194,15 @@ class RestApi {
 								break;
 							case 'lastStatus':
 								$bot->setLastStatus( (string) $updated_value );
+								break;
+							case 'longPollServer':
+								$bot->setLongPollServer( (string) $updated_value );
+								break;
+							case 'longPollTs':
+								$bot->setLongPollTs( (string) $updated_value );
+								break;
+							case 'lastSyncAt':
+								$bot->setLastSyncAt( (string) $updated_value );
 								break;
 						}
 					} catch ( wppaSavePostException $e ) {
@@ -169,6 +225,7 @@ class RestApi {
 		self::registerChatMetaField( 'chatType', 'Chat type.' );
 		self::registerChatMetaField( 'displayName', 'Display name.' );
 		self::registerChatMetaField( 'username', 'Optional chat username.' );
+		self::registerChatMetaField( 'connectedAt', 'Time when the chat was connected.' );
 	}
 
 	private static function registerChatMetaField( string $field, string $description ): void {
@@ -190,6 +247,8 @@ class RestApi {
 							return $chat->getDisplayName();
 						case 'username':
 							return $chat->getUsername();
+						case 'connectedAt':
+							return $chat->getConnectedAt();
 						default:
 							return null;
 					}
@@ -197,22 +256,29 @@ class RestApi {
 				'update_callback' => static function ( $updated_value, $wp_post ) use ( $field ) {
 					$chat = new Chat( $wp_post->ID );
 
-					switch ( $field ) {
-						case 'peerId':
-							$chat->setPeerId( (string) $updated_value );
-							break;
-						case 'userId':
-							$chat->setUserId( (string) $updated_value );
-							break;
-						case 'chatType':
-							$chat->setChatType( (string) $updated_value );
-							break;
-						case 'displayName':
-							$chat->setDisplayName( (string) $updated_value );
-							break;
-						case 'username':
-							$chat->setUsername( (string) $updated_value );
-							break;
+					try {
+						switch ( $field ) {
+							case 'peerId':
+								$chat->setPeerId( (string) $updated_value );
+								break;
+							case 'userId':
+								$chat->setUserId( (string) $updated_value );
+								break;
+							case 'chatType':
+								$chat->setChatType( (string) $updated_value );
+								break;
+							case 'displayName':
+								$chat->setDisplayName( (string) $updated_value );
+								break;
+							case 'username':
+								$chat->setUsername( (string) $updated_value );
+								break;
+							case 'connectedAt':
+								$chat->setConnectedAt( (string) $updated_value );
+								break;
+						}
+					} catch ( wppaSavePostException $e ) {
+						return false;
 					}
 
 					return true;
