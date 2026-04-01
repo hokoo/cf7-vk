@@ -64,7 +64,7 @@ case "$item" in
   y|Y)
     echo "Initializing dev database..."
     docker-compose -p "${PROJECT_NAME}" exec php sh -c "\
-    wp db reset --yes && \
+    wp db reset --defaults --yes && \
     wp core install --url=${PROJECT_BASE_URL} --title=\"${WP_TITLE}\" --admin_user=${WP_ADMIN} --admin_password=${WP_ADMIN_PASS} --admin_email=${WP_ADMIN_EMAIL} --skip-email && \
     if wp plugin is-installed akismet; then wp plugin delete akismet; fi && \
     if wp plugin is-installed hello; then wp plugin delete hello; fi && \

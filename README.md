@@ -43,6 +43,8 @@ npm run build
 
 The default local PHP runtime is pinned through `PHP_TAG=8.4` in `install/.example/.env.example`, paired with a newer `wodby/wordpress-php` base image so that bundled WP-CLI stays quiet during setup on PHP 8.4 without a custom phar override.
 
+When `make setup.all` initializes the dev database, the script uses `wp db reset --defaults --yes`. This is intentional: the newer MariaDB client bundled in the PHP image requires loading its default client config so local container-to-container MySQL access does not fail with TLS certificate verification errors.
+
 Useful commands:
 
 ```bash
