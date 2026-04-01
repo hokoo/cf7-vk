@@ -4,9 +4,24 @@ draw_line(){
   printf %"$(tput cols)"s |tr " " "-"
 }
 
+fake_posts(){
+  docker-compose -p "${PROJECT_NAME}" exec php sh -c "\
+  wp post create --post_type=cf7vk_chat --post_title=\"Chat 0\" --post_status=publish && \
+  wp post create --post_type=cf7vk_chat --post_title=\"Chat 1\" --post_status=publish && \
+  wp post create --post_type=cf7vk_bot --post_title=\"Bot example\" --post_status=publish && \
+  wp post create --post_type=cf7vk_channel --post_title=\"Channel 0\" --post_status=publish && \
+  wp post create --post_type=cf7vk_channel --post_title=\"Channel 1\" --post_status=publish && \
+  wp post create --post_type=cf7vk_channel --post_title=\"Channel 2\" --post_status=publish"
+}
+
+set_permalinks(){
+  docker-compose -p "${PROJECT_NAME}" exec php sh -c "wp rewrite structure '/%year%/%monthnum%/%postname%/'"
+}
+
 setup-env(){
   echo "Create .env from example"
   if [ ! -f ./.env ]; then
+      echo "File .env doesn't exist. Recreating..."
       cp ./install/.example/.env.example ./.env && echo "Ok."
   else
       echo "File .env already exists."

@@ -13,6 +13,9 @@ docker.down:
 docker.build.php:
 	docker-compose -p cf7vk up -d --build php
 
+git.wpc:
+	bash ./install/gitwpc.sh
+
 clear.all:
 	bash ./install/clear.sh
 

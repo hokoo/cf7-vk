@@ -35,14 +35,11 @@ Typical local workflow:
 
 ```bash
 make setup.all
-composer install
-cd plugin-dir && composer install
 cd plugin-dir/react && npm install
 npm run build
-docker-compose -p cf7vk up -d
 ```
 
-`make setup.all` creates `.env` from `install/.example/.env.example` and generates nginx configs under `install/nginx/`. The root Composer install provisions local WordPress into `wordpress/`, while `plugin-dir/composer install` installs the plugin PHP dependencies.
+`make setup.all` now mirrors the original project bootstrap more closely: it creates `.env`, generates nginx configs, starts Docker, installs root and plugin Composer dependencies inside the PHP container, prepares `dev-content` / `betas-content`, creates the `dev-content/plugins/cf7-vk -> plugin-dir` symlink, generates `index.php` / config files, and can initialize the dev+betas WordPress databases interactively.
 
 Useful commands:
 
@@ -50,6 +47,7 @@ Useful commands:
 make docker.up
 make docker.down
 make npm.build
+make git.wpc
 make php.connect
 make node.connect
 ```
