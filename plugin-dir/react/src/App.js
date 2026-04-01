@@ -8,8 +8,11 @@ import NewBot from './components/NewBot';
 import NewChannel from './components/NewChannel';
 import {
     fetchBots,
+    fetchChats,
     fetchChannels,
     fetchForms,
+    fetchBotsForChats,
+    fetchChatsForChannels,
     fetchBotsForChannels,
     fetchFormsForChannels
 } from './utils/api';
@@ -17,7 +20,10 @@ import {
 const App = () => {
     const [bots, setBots] = useState([]);
     const [channels, setChannels] = useState([]);
+    const [chats, setChats] = useState([]);
     const [forms, setForms] = useState([]);
+    const [bot2ChatConnections, setBot2ChatConnections] = useState([]);
+    const [chat2ChannelConnections, setChat2ChannelConnections] = useState([]);
     const [bot2ChannelConnections, setBot2ChannelConnections] = useState([]);
     const [form2ChannelConnections, setForm2ChannelConnections] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -29,20 +35,29 @@ const App = () => {
             const [
                 loadedBots,
                 loadedChannels,
+                loadedChats,
                 loadedForms,
+                loadedBotChatConnections,
+                loadedChatChannelConnections,
                 loadedBotConnections,
                 loadedFormConnections
             ] = await Promise.all([
                 fetchBots(),
                 fetchChannels(),
+                fetchChats(),
                 fetchForms(),
+                fetchBotsForChats(),
+                fetchChatsForChannels(),
                 fetchBotsForChannels(),
                 fetchFormsForChannels()
             ]);
 
             setBots(Array.isArray(loadedBots) ? loadedBots : []);
             setChannels(Array.isArray(loadedChannels) ? loadedChannels : []);
+            setChats(Array.isArray(loadedChats) ? loadedChats : []);
             setForms(Array.isArray(loadedForms) ? loadedForms : []);
+            setBot2ChatConnections(Array.isArray(loadedBotChatConnections) ? loadedBotChatConnections : []);
+            setChat2ChannelConnections(Array.isArray(loadedChatChannelConnections) ? loadedChatChannelConnections : []);
             setBot2ChannelConnections(Array.isArray(loadedBotConnections) ? loadedBotConnections : []);
             setForm2ChannelConnections(Array.isArray(loadedFormConnections) ? loadedFormConnections : []);
         } finally {
@@ -60,7 +75,10 @@ const App = () => {
 
     const safeBots = Array.isArray(bots) ? bots : [];
     const safeChannels = Array.isArray(channels) ? channels : [];
+    const safeChats = Array.isArray(chats) ? chats : [];
     const safeForms = Array.isArray(forms) ? forms : [];
+    const safeBotChatConnections = Array.isArray(bot2ChatConnections) ? bot2ChatConnections : [];
+    const safeChatChannelConnections = Array.isArray(chat2ChannelConnections) ? chat2ChannelConnections : [];
     const safeBotConnections = Array.isArray(bot2ChannelConnections) ? bot2ChannelConnections : [];
     const safeFormConnections = Array.isArray(form2ChannelConnections) ? form2ChannelConnections : [];
 
@@ -92,6 +110,8 @@ const App = () => {
                             <Bot
                                 key={bot.id}
                                 bot={bot}
+                                chats={safeChats}
+                                bot2ChatConnections={safeBotChatConnections}
                                 onUpdated={loadData}
                             />
                         ))}
@@ -108,7 +128,10 @@ const App = () => {
                                 key={channel.id}
                                 channel={channel}
                                 bots={safeBots}
+                                chats={safeChats}
                                 forms={safeForms}
+                                bot2ChatConnections={safeBotChatConnections}
+                                chat2ChannelConnections={safeChatChannelConnections}
                                 bot2ChannelConnections={safeBotConnections}
                                 form2ChannelConnections={safeFormConnections}
                                 onUpdated={loadData}

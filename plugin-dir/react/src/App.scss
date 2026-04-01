@@ -153,6 +153,25 @@ body.wp-admin {
   margin-top: 4px;
 }
 
+.cf7vk-chat-status {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.cf7vk-chat-status.pending span:nth-child(2) {
+  color: #dba617;
+}
+
+.cf7vk-chat-status.active span:nth-child(2) {
+  color: #00a32a;
+}
+
+.cf7vk-chat-status.muted span:nth-child(2) {
+  color: #646970;
+}
+
 @media (max-width: 1024px) {
   .cf7vk-layout,
   .cf7vk-main {

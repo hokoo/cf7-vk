@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use InvalidArgumentException;
+use iTRON\wpPostAble\Exceptions\wppaSavePostException;
 use wpdb;
 
 class Util {
@@ -78,6 +79,108 @@ class Util {
 		}
 
 		return new Chat( (int) $chat_ids[0] );
+	}
+
+	/**
+	 * @throws wppaSavePostException
+	 */
+	public static function createOrUpdateChatFromVkMessage(
+		array $message,
+		array $profile = [],
+		array $conversation = []
+	): Chat {
+		$peer_id = trim( (string) ( $message['peer_id'] ?? '' ) );
+
+		if ( '' === $peer_id ) {
+			throw new InvalidArgumentException( esc_html__( 'VK message peer ID is missing.', 'cf7-vk' ) );
+		}
+
+		$chat = self::getChatByPeerId( $peer_id ) ?: new Chat();
+		$title = self::resolveVkChatTitle( $message, $profile, $conversation );
+		$timestamp = self::normalizeVkTimestamp( $message['date'] ?? '' );
+
+		$chat->syncFromVkPayload(
+			[
+				'peerId' => $peer_id,
+				'userId' => (string) ( $message['from_id'] ?? '' ),
+				'chatType' => Chat::detectTypeByPeerId( (int) $peer_id ),
+				'displayName' => $title,
+				'username' => (string) ( $profile['screen_name'] ?? '' ),
+				'connectedAt' => $chat->getConnectedAt() ?: $timestamp,
+				'conversationMessageId' => (string) ( $message['conversation_message_id'] ?? '' ),
+				'lastMessageId' => (string) ( $message['id'] ?? '' ),
+				'lastMessageText' => (string) ( $message['text'] ?? '' ),
+				'lastEventAt' => $timestamp,
+				'title' => $title,
+			]
+		);
+
+		return $chat;
+	}
+
+	public static function resolveVkChatTitle(
+		array $message,
+		array $profile = [],
+		array $conversation = []
+	): string {
+		$conversation_title =
+			(string) (
+				$conversation['chat_settings']['title'] ??
+				$conversation['conversation']['chat_settings']['title'] ??
+				$message['title'] ??
+				''
+			);
+
+		if ( '' !== trim( $conversation_title ) ) {
+			return trim( $conversation_title );
+		}
+
+		$profile_name = trim(
+			implode(
+				' ',
+				array_filter(
+					[
+						(string) ( $profile['first_name'] ?? '' ),
+						(string) ( $profile['last_name'] ?? '' ),
+					]
+				)
+			)
+		);
+
+		if ( '' !== $profile_name ) {
+			return $profile_name;
+		}
+
+		if ( ! empty( $profile['screen_name'] ) ) {
+			return (string) $profile['screen_name'];
+		}
+
+		$peer_id = (int) ( $message['peer_id'] ?? 0 );
+		$user_id = (string) ( $message['from_id'] ?? '' );
+
+		if ( Chat::TYPE_PRIVATE === Chat::detectTypeByPeerId( $peer_id ) ) {
+			return sprintf(
+				/* translators: %s: VK user ID */
+				__( 'VK user %s', 'cf7-vk' ),
+				$user_id ?: (string) $peer_id
+			);
+		}
+
+		return sprintf(
+			/* translators: %s: VK peer ID */
+			__( 'VK chat %s', 'cf7-vk' ),
+			(string) $peer_id
+		);
+	}
+
+	public static function normalizeVkTimestamp( $timestamp ): string {
+		if ( is_numeric( $timestamp ) ) {
+			return gmdate( 'c', (int) $timestamp );
+		}
+
+		$timestamp = trim( (string) $timestamp );
+
+		return '' === $timestamp ? gmdate( 'c' ) : $timestamp;
 	}
 
 	/**

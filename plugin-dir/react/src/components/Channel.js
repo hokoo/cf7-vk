@@ -3,16 +3,21 @@
 import React, {useMemo, useState} from 'react';
 import {
     apiConnectBotToChannel,
+    apiConnectChatToChannel,
     apiConnectFormToChannel,
     apiDeleteChannel,
     apiDisconnectBotFromChannel,
+    apiDisconnectChatFromChannel,
     apiDisconnectFormFromChannel
 } from '../utils/api';
 
 const Channel = ({
     channel,
     bots,
+    chats,
     forms,
+    bot2ChatConnections,
+    chat2ChannelConnections,
     bot2ChannelConnections,
     form2ChannelConnections,
     onUpdated
@@ -36,8 +41,16 @@ const Channel = ({
         : null;
 
     const assignedForms = forms.filter((form) => linkedFormIds.includes(form.id));
+    const botChatConnections = assignedBot
+        ? bot2ChatConnections.filter((item) => item?.data?.from === assignedBot.id)
+        : [];
+    const availableChats = chats.filter((chat) => botChatConnections.some((item) => item?.data?.to === chat.id));
+    const linkedChatIds = chat2ChannelConnections
+        .filter((item) => item?.data?.to === channel.id)
+        .map((item) => item.data.from);
     const getFormTitle = (form) => form?.title?.rendered || form?.title || `#${form.id}`;
     const getBotTitle = (bot) => bot?.title?.rendered || bot?.title || `#${bot.id}`;
+    const getChatTitle = (chat) => chat?.title?.rendered || chat?.displayName || `#${chat.id}`;
 
     const onBotChange = async (event) => {
         const nextBotId = event.target.value;
@@ -93,6 +106,26 @@ const Channel = ({
         }
     };
 
+    const toggleChat = async (chatId, isLinked) => {
+        setSaving(true);
+
+        try {
+            const connection = chat2ChannelConnections.find(
+                (item) => item?.data?.from === chatId && item?.data?.to === channel.id
+            );
+
+            if (isLinked && connection) {
+                await apiDisconnectChatFromChannel(connection.data.id);
+            } else if (!isLinked) {
+                await apiConnectChatToChannel(chatId, channel.id);
+            }
+
+            await onUpdated();
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <article className="cf7vk-card">
             <h3>{channel.title?.rendered || wp.i18n.__( 'Untitled channel', 'cf7-vk' )}</h3>
@@ -125,6 +158,32 @@ const Channel = ({
                                     />
                                     {' '}
                                     {getFormTitle(form)}
+                                </label>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
+
+            <div>
+                <strong>{wp.i18n.__( 'Dialogs in this channel', 'cf7-vk' )}</strong>
+                <ul className="cf7vk-list">
+                    {availableChats.length === 0 ? (
+                        <li>{wp.i18n.__( 'No linked dialogs are available for this bot yet.', 'cf7-vk' )}</li>
+                    ) : availableChats.map((chat) => {
+                        const isLinked = linkedChatIds.includes(chat.id);
+
+                        return (
+                            <li key={chat.id}>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        checked={isLinked}
+                                        onChange={() => toggleChat(chat.id, isLinked)}
+                                        disabled={saving}
+                                    />
+                                    {' '}
+                                    {getChatTitle(chat)}
                                 </label>
                             </li>
                         );

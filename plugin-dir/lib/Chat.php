@@ -26,6 +26,9 @@ class Chat extends Entity implements wpPostAble {
 	public const STATUS_ACTIVE = 'active';
 	public const STATUS_PENDING = 'pending';
 	public const STATUS_MUTED = 'muted';
+	public const TYPE_PRIVATE = 'private';
+	public const TYPE_CHAT = 'chat';
+	public const TYPE_COMMUNITY = 'community';
 
 	/**
 	 * @throws wppaLoadPostException
@@ -98,6 +101,104 @@ class Chat extends Entity implements wpPostAble {
 
 	public function setConnectedAt( string $connected_at ): self {
 		$this->setParam( 'connectedAt', trim( $connected_at ) );
+		$this->savePost();
+
+		return $this;
+	}
+
+	public function getConversationMessageId(): string {
+		return (string) $this->getParam( 'conversationMessageId' );
+	}
+
+	public function setConversationMessageId( string $conversation_message_id ): self {
+		$this->setParam( 'conversationMessageId', trim( $conversation_message_id ) );
+		$this->savePost();
+
+		return $this;
+	}
+
+	public function getLastMessageId(): string {
+		return (string) $this->getParam( 'lastMessageId' );
+	}
+
+	public function setLastMessageId( string $message_id ): self {
+		$this->setParam( 'lastMessageId', trim( $message_id ) );
+		$this->savePost();
+
+		return $this;
+	}
+
+	public function getLastMessageText(): string {
+		return (string) $this->getParam( 'lastMessageText' );
+	}
+
+	public function setLastMessageText( string $text ): self {
+		$this->setParam( 'lastMessageText', trim( $text ) );
+		$this->savePost();
+
+		return $this;
+	}
+
+	public function getLastEventAt(): string {
+		return (string) $this->getParam( 'lastEventAt' );
+	}
+
+	public function setLastEventAt( string $timestamp ): self {
+		$this->setParam( 'lastEventAt', trim( $timestamp ) );
+		$this->savePost();
+
+		return $this;
+	}
+
+	public function getResolvedTitle(): string {
+		return $this->getTitle() ?: $this->getDisplayName() ?: $this->getPeerId();
+	}
+
+	public static function detectTypeByPeerId( int $peer_id ): string {
+		if ( $peer_id > 2000000000 ) {
+			return self::TYPE_CHAT;
+		}
+
+		if ( $peer_id < 0 ) {
+			return self::TYPE_COMMUNITY;
+		}
+
+		return self::TYPE_PRIVATE;
+	}
+
+	/**
+	 * @throws wppaSavePostException
+	 */
+	public function syncFromVkPayload( array $payload ): self {
+		$params = [
+			'peerId',
+			'userId',
+			'chatType',
+			'displayName',
+			'username',
+			'connectedAt',
+			'conversationMessageId',
+			'lastMessageId',
+			'lastMessageText',
+			'lastEventAt',
+		];
+
+		foreach ( $params as $param ) {
+			if ( array_key_exists( $param, $payload ) ) {
+				$this->setParam( $param, trim( (string) $payload[ $param ] ) );
+			}
+		}
+
+		if ( ! empty( $payload['title'] ) ) {
+			$this->setTitle( trim( (string) $payload['title'] ) );
+		}
+
+		if ( 'publish' !== ( $this->getPost()->post_status ?? '' ) ) {
+			$this->publish();
+
+			return $this;
+		}
+
 		$this->savePost();
 
 		return $this;

@@ -8,8 +8,11 @@ jest.mock('./components/Bot', () => () => <div>Bot component</div>);
 jest.mock('./components/Channel', () => () => <div>Channel component</div>);
 jest.mock('./utils/api', () => ({
     fetchBots: jest.fn().mockResolvedValue([]),
+    fetchChats: jest.fn().mockResolvedValue([]),
     fetchChannels: jest.fn().mockResolvedValue([]),
     fetchForms: jest.fn().mockResolvedValue([]),
+    fetchBotsForChats: jest.fn().mockResolvedValue([]),
+    fetchChatsForChannels: jest.fn().mockResolvedValue([]),
     fetchBotsForChannels: jest.fn().mockResolvedValue([]),
     fetchFormsForChannels: jest.fn().mockResolvedValue([])
 }));

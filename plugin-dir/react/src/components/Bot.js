@@ -1,9 +1,23 @@
 /* global wp */
 
 import React, {useState} from 'react';
-import {apiDeleteBot, apiPingBot, apiSaveBot} from '../utils/api';
+import {
+    apiDeleteBot,
+    apiDisconnectBotFromChat,
+    apiFetchUpdates,
+    apiPingBot,
+    apiSaveBot,
+    apiSetBotChatStatus
+} from '../utils/api';
 
-const Bot = ({bot, onUpdated}) => {
+const getConnectionStatus = (botId, chatId, connections) => {
+    const relation = connections.find((item) => item?.data?.from === botId && item?.data?.to === chatId);
+    const status = relation?.data?.meta?.status?.[0];
+
+    return status || 'active';
+};
+
+const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
     const [form, setForm] = useState({
         title: bot.title?.rendered || '',
         groupId: bot.groupId || '',
@@ -13,6 +27,7 @@ const Bot = ({bot, onUpdated}) => {
     });
     const [saving, setSaving] = useState(false);
     const [pinging, setPinging] = useState(false);
+    const [fetching, setFetching] = useState(false);
     const [feedback, setFeedback] = useState(null);
 
     const updateField = (field) => (event) => {
@@ -69,6 +84,89 @@ const Bot = ({bot, onUpdated}) => {
         } finally {
             setPinging(false);
             await onUpdated();
+        }
+    };
+
+    const fetchUpdates = async () => {
+        setFetching(true);
+        setFeedback(null);
+
+        try {
+            const result = await apiFetchUpdates(bot.id);
+            const discoveredChats = result.updates?.length || 0;
+
+            setFeedback({
+                type: discoveredChats > 0 ? 'success' : 'warning',
+                message: discoveredChats > 0
+                    ? wp.i18n.__( 'New VK dialogs were synchronized.', 'cf7-vk' )
+                    : wp.i18n.__( 'No new dialogs matched the authorization command.', 'cf7-vk' )
+            });
+        } catch (error) {
+            setFeedback({
+                type: 'error',
+                message: error.message
+            });
+        } finally {
+            setFetching(false);
+            await onUpdated();
+        }
+    };
+
+    const relatedChatIds = bot2ChatConnections
+        .filter((item) => item?.data?.from === bot.id)
+        .map((item) => item.data.to);
+
+    const chatsForBot = chats.filter((chat) => relatedChatIds.includes(chat.id));
+
+    const handleToggleChatStatus = async (chatId, currentStatus) => {
+        const relation = bot2ChatConnections.find((item) => item?.data?.from === bot.id && item?.data?.to === chatId);
+
+        if (!relation) {
+            return;
+        }
+
+        const nextStatus = currentStatus === 'muted' ? 'active' : 'muted';
+        setSaving(true);
+
+        try {
+            await apiSetBotChatStatus(relation.data.id, nextStatus);
+            await onUpdated();
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleActivatePendingChat = async (chatId) => {
+        const relation = bot2ChatConnections.find((item) => item?.data?.from === bot.id && item?.data?.to === chatId);
+
+        if (!relation) {
+            return;
+        }
+
+        setSaving(true);
+
+        try {
+            await apiSetBotChatStatus(relation.data.id, 'active');
+            await onUpdated();
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const disconnectChat = async (chatId) => {
+        const relation = bot2ChatConnections.find((item) => item?.data?.from === bot.id && item?.data?.to === chatId);
+
+        if (!relation) {
+            return;
+        }
+
+        setSaving(true);
+
+        try {
+            await apiDisconnectBotFromChat(relation.data.id);
+            await onUpdated();
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -149,9 +247,60 @@ const Bot = ({bot, onUpdated}) => {
                     <button className="button" type="button" onClick={ping} disabled={saving || pinging}>
                         {pinging ? wp.i18n.__( 'Checking...', 'cf7-vk' ) : wp.i18n.__( 'Check connection', 'cf7-vk' )}
                     </button>
+                    <button className="button" type="button" onClick={fetchUpdates} disabled={saving || fetching}>
+                        {fetching ? wp.i18n.__( 'Syncing...', 'cf7-vk' ) : wp.i18n.__( 'Fetch dialogs', 'cf7-vk' )}
+                    </button>
                     <button className="button" type="button" onClick={remove} disabled={saving}>
                         {wp.i18n.__( 'Remove', 'cf7-vk' )}
                     </button>
+                </div>
+
+                <div>
+                    <strong>{wp.i18n.__( 'Linked dialogs', 'cf7-vk' )}</strong>
+                    <ul className="cf7vk-list">
+                        {chatsForBot.length === 0 ? (
+                            <li>{wp.i18n.__( 'No dialogs linked yet.', 'cf7-vk' )}</li>
+                        ) : chatsForBot.map((chat) => {
+                            const status = getConnectionStatus(bot.id, chat.id, bot2ChatConnections);
+                            const title = chat.title?.rendered || chat.displayName || `#${chat.id}`;
+
+                            return (
+                                <li key={chat.id} className={`cf7vk-chat-status ${status}`}>
+                                    <span>{title}</span>
+                                    <span>{status}</span>
+                                    <div className="cf7vk-actions">
+                                        {status === 'pending' ? (
+                                            <button
+                                                className="button button-small"
+                                                type="button"
+                                                onClick={() => handleActivatePendingChat(chat.id)}
+                                                disabled={saving}
+                                            >
+                                                {wp.i18n.__( 'Activate', 'cf7-vk' )}
+                                            </button>
+                                        ) : (
+                                            <button
+                                                className="button button-small"
+                                                type="button"
+                                                onClick={() => handleToggleChatStatus(chat.id, status)}
+                                                disabled={saving}
+                                            >
+                                                {status === 'muted' ? wp.i18n.__( 'Unmute', 'cf7-vk' ) : wp.i18n.__( 'Mute', 'cf7-vk' )}
+                                            </button>
+                                        )}
+                                        <button
+                                            className="button button-small"
+                                            type="button"
+                                            onClick={() => disconnectChat(chat.id)}
+                                            disabled={saving}
+                                        >
+                                            {wp.i18n.__( 'Remove', 'cf7-vk' )}
+                                        </button>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
                 </div>
             </form>
         </article>

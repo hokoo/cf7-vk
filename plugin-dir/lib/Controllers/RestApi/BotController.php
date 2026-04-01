@@ -36,6 +36,24 @@ class BotController extends Controller {
 				],
 			]
 		);
+
+		register_rest_route(
+			$this->namespace,
+			'/' . $this->rest_base . '/(?P<id>[\d]+)/fetch_updates',
+			[
+				'args' => [
+					'id' => [
+						'description' => 'Unique identifier for the VK bot.',
+						'type' => 'integer',
+					],
+				],
+				[
+					'methods' => WP_REST_Server::READABLE,
+					'callback' => [ $this, 'fetch_updates' ],
+					'permission_callback' => [ $this, 'get_item_permissions_check' ],
+				],
+			]
+		);
 	}
 
 	public function ping( $request ) {
@@ -83,6 +101,37 @@ class BotController extends Controller {
 		);
 	}
 
+	public function fetch_updates( $request ) {
+		try {
+			$bot = new Bot( (int) $request['id'] );
+		} catch ( wppaCreatePostException | wppaLoadPostException $exception ) {
+			return new WP_Error(
+				'rest_post_invalid_id',
+				$exception->getMessage(),
+				[ 'status' => 404 ]
+			);
+		}
+
+		try {
+			return rest_ensure_response( $bot->fetchUpdates() );
+		} catch ( TransportNotConfigured $exception ) {
+			return new WP_Error(
+				'rest_vk_bot_config_invalid',
+				$exception->getMessage(),
+				[ 'status' => 400 ]
+			);
+		} catch ( VkApiException $exception ) {
+			return new WP_Error(
+				'rest_vk_fetch_updates_failed',
+				$exception->getMessage(),
+				[
+					'status' => 502,
+					'vk_error_code' => $exception->getCode(),
+				]
+			);
+		}
+	}
+
 	public function prepare_item_for_response( $post, $request ): WP_REST_Response {
 		$response = parent::prepare_item_for_response( $post, $request );
 		$base = sprintf( '%s/%s', $this->namespace, $this->rest_base );
@@ -90,6 +139,11 @@ class BotController extends Controller {
 		$response->add_link(
 			'ping',
 			rest_url( trailingslashit( $base ) . $post->ID . '/ping' )
+		);
+
+		$response->add_link(
+			'fetch_updates',
+			rest_url( trailingslashit( $base ) . $post->ID . '/fetch_updates' )
 		);
 
 		$response->add_link(

@@ -226,6 +226,10 @@ class RestApi {
 		self::registerChatMetaField( 'displayName', 'Display name.' );
 		self::registerChatMetaField( 'username', 'Optional chat username.' );
 		self::registerChatMetaField( 'connectedAt', 'Time when the chat was connected.' );
+		self::registerChatMetaField( 'conversationMessageId', 'Conversation message ID for the latest linked message.' );
+		self::registerChatMetaField( 'lastMessageId', 'Latest VK message ID.' );
+		self::registerChatMetaField( 'lastMessageText', 'Latest VK message text.' );
+		self::registerChatMetaField( 'lastEventAt', 'Time of the latest VK event for the chat.' );
 	}
 
 	private static function registerChatMetaField( string $field, string $description ): void {
@@ -249,6 +253,14 @@ class RestApi {
 							return $chat->getUsername();
 						case 'connectedAt':
 							return $chat->getConnectedAt();
+						case 'conversationMessageId':
+							return $chat->getConversationMessageId();
+						case 'lastMessageId':
+							return $chat->getLastMessageId();
+						case 'lastMessageText':
+							return $chat->getLastMessageText();
+						case 'lastEventAt':
+							return $chat->getLastEventAt();
 						default:
 							return null;
 					}
@@ -275,6 +287,18 @@ class RestApi {
 								break;
 							case 'connectedAt':
 								$chat->setConnectedAt( (string) $updated_value );
+								break;
+							case 'conversationMessageId':
+								$chat->setConversationMessageId( (string) $updated_value );
+								break;
+							case 'lastMessageId':
+								$chat->setLastMessageId( (string) $updated_value );
+								break;
+							case 'lastMessageText':
+								$chat->setLastMessageText( (string) $updated_value );
+								break;
+							case 'lastEventAt':
+								$chat->setLastEventAt( (string) $updated_value );
 								break;
 						}
 					} catch ( wppaSavePostException $e ) {

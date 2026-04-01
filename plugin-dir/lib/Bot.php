@@ -32,6 +32,7 @@ class Bot extends Entity implements wpPostAble {
 	public const DEFAULT_API_VERSION = '5.199';
 	public const DEFAULT_AUTH_COMMAND = 'start';
 	public const EMPTY_SECRET_MASK = '[%s]';
+	public const LONG_POLL_WAIT = 25;
 	private ?VkApi $api = null;
 
 	/**
@@ -392,6 +393,91 @@ class Bot extends Entity implements wpPostAble {
 	 * @throws TransportNotConfigured
 	 * @throws VkApiException
 	 */
+	public function fetchUpdates(): array {
+		$this->ensureLongPollBootstrap();
+
+		try {
+			$response = $this->getApi()->checkLongPoll(
+				$this->getLongPollServer(),
+				$this->getLongPollKey(),
+				$this->getLongPollTs(),
+				self::LONG_POLL_WAIT
+			);
+		} catch ( VkApiException $e ) {
+			$this->markTransportFailure(
+				$e,
+				'VK Long Poll request failed.',
+				Logger::LEVEL_WARNING,
+				[
+					'groupId' => $this->getGroupId(),
+				]
+			);
+
+			throw $e;
+		}
+
+		$failed = (int) ( $response['failed'] ?? 0 );
+
+		if ( 1 === $failed ) {
+			$new_ts = (string) ( $response['ts'] ?? '' );
+
+			if ( '' !== $new_ts ) {
+				$this->persistStateSafely(
+					[
+						'longPollTs' => $new_ts,
+						'lastSyncAt' => gmdate( 'c' ),
+						'lastStatus' => self::STATUS_ONLINE,
+					]
+				);
+			}
+
+			return [
+				'updates' => [],
+				'hasNewChats' => false,
+				'hasNewConnections' => false,
+				'failed' => 1,
+				'ts' => $new_ts,
+			];
+		}
+
+		if ( 2 === $failed || 3 === $failed ) {
+			$this->refreshLongPollBootstrap();
+
+			return [
+				'updates' => [],
+				'hasNewChats' => false,
+				'hasNewConnections' => false,
+				'failed' => $failed,
+				'ts' => $this->getLongPollTs(),
+			];
+		}
+
+		$updates = is_array( $response['updates'] ?? null ) ? $response['updates'] : [];
+		$processed = $this->processLongPollUpdates( $updates );
+		$new_ts = (string) ( $response['ts'] ?? $this->getLongPollTs() );
+
+		$this->persistStateSafely(
+			[
+				'longPollTs' => $new_ts,
+				'lastSyncAt' => gmdate( 'c' ),
+				'lastStatus' => self::STATUS_ONLINE,
+			]
+		);
+
+		return array_merge(
+			$processed,
+			[
+				'failed' => 0,
+				'ts' => $new_ts,
+				'updatesCount' => count( $updates ),
+			]
+		);
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 * @throws VkApiException
+	 */
 	public function sendMessage( Chat $chat, string $message, bool $throw_on_error = true, array $extra = [] ): ?int {
 		try {
 			$message_id = $this->getApi()->sendMessage(
@@ -506,5 +592,149 @@ class Bot extends Entity implements wpPostAble {
 			$title,
 			$level
 		);
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 * @throws VkApiException
+	 */
+	private function ensureLongPollBootstrap(): void {
+		if (
+			'' !== $this->getLongPollServer() &&
+			'' !== $this->getLongPollKey() &&
+			'' !== $this->getLongPollTs()
+		) {
+			return;
+		}
+
+		$this->refreshLongPollBootstrap();
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 * @throws VkApiException
+	 */
+	private function refreshLongPollBootstrap(): void {
+		$group_id = $this->getNormalizedGroupId();
+		$long_poll = $this->getApi()->getLongPollServer( $group_id );
+
+		$this->persistStateSafely(
+			[
+				'longPollServer' => (string) ( $long_poll['server'] ?? '' ),
+				'longPollKey' => (string) ( $long_poll['key'] ?? '' ),
+				'longPollTs' => (string) ( $long_poll['ts'] ?? '' ),
+				'lastSyncAt' => gmdate( 'c' ),
+				'lastStatus' => self::STATUS_ONLINE,
+			]
+		);
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 * @throws VkApiException
+	 */
+	private function processLongPollUpdates( array $updates ): array {
+		$result = [
+			'updates' => [],
+			'hasNewChats' => false,
+			'hasNewConnections' => false,
+		];
+
+		foreach ( $updates as $update ) {
+			if ( ! is_array( $update ) ) {
+				continue;
+			}
+
+			if ( 'message_new' !== ( $update['type'] ?? '' ) ) {
+				continue;
+			}
+
+			$processed = $this->handleIncomingMessage( (array) ( $update['object'] ?? [] ) );
+
+			if ( empty( $processed ) ) {
+				continue;
+			}
+
+			$result['updates'][] = $processed;
+			$result['hasNewChats'] = $result['hasNewChats'] || ! empty( $processed['hasNewChat'] );
+			$result['hasNewConnections'] = $result['hasNewConnections'] || ! empty( $processed['hasNewConnection'] );
+		}
+
+		return $result;
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 * @throws VkApiException
+	 */
+	private function handleIncomingMessage( array $object ): array {
+		$message = isset( $object['message'] ) && is_array( $object['message'] )
+			? $object['message']
+			: [];
+
+		if ( empty( $message ) ) {
+			return [];
+		}
+
+		$text = trim( (string) ( $message['text'] ?? '' ) );
+		$auth_command = trim( $this->getAuthCommand() );
+
+		if ( '' === $auth_command || $text !== $auth_command ) {
+			return [];
+		}
+
+		$peer_id = (string) ( $message['peer_id'] ?? '' );
+		$user_id = (int) ( $message['from_id'] ?? 0 );
+		$profile = $this->fetchUserProfile( $user_id );
+		$conversation = $this->fetchConversationData( $message );
+		$existing_chat = '' !== $peer_id ? Util::getChatByPeerId( $peer_id ) : null;
+		$chat = Util::createOrUpdateChatFromVkMessage( $message, $profile, $conversation );
+		$has_new_chat = null === $existing_chat;
+		$has_new_connection = false;
+
+		if ( ! $this->hasChat( $chat ) ) {
+			$connection = $this->connectChat( $chat );
+
+			if ( $connection ) {
+				$chat->setPending( $this );
+				$has_new_connection = true;
+			}
+		}
+
+		return [
+			'type' => 'message_new',
+			'peerId' => $chat->getPeerId(),
+			'chatId' => $chat->getPost()->ID,
+			'status' => $chat->getConnectionStatus( $this ),
+			'hasNewChat' => $has_new_chat,
+			'hasNewConnection' => $has_new_connection,
+		];
+	}
+
+	/**
+	 * @throws VkApiException
+	 */
+	private function fetchUserProfile( int $user_id ): array {
+		if ( $user_id <= 0 ) {
+			return [];
+		}
+
+		$profiles = $this->getApi()->getUsers( [ $user_id ] );
+
+		return isset( $profiles[0] ) && is_array( $profiles[0] ) ? $profiles[0] : [];
+	}
+
+	/**
+	 * @throws VkApiException
+	 */
+	private function fetchConversationData( array $message ): array {
+		$peer_id = (string) ( $message['peer_id'] ?? '' );
+		$conversation_message_id = (string) ( $message['conversation_message_id'] ?? '' );
+
+		if ( '' === $peer_id || '' === $conversation_message_id ) {
+			return [];
+		}
+
+		return $this->getApi()->getConversationByMessage( $peer_id, $conversation_message_id );
 	}
 }

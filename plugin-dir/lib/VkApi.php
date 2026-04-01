@@ -60,6 +60,90 @@ class VkApi {
 	}
 
 	/**
+	 * @throws VkApiException
+	 */
+	public function checkLongPoll( string $server, string $key, string $ts, int $wait = 25 ): array {
+		$response = wp_remote_get(
+			add_query_arg(
+				[
+					'act' => 'a_check',
+					'key' => $key,
+					'ts' => $ts,
+					'wait' => min( 90, max( 1, $wait ) ),
+				],
+				$server
+			),
+			[
+				'timeout' => min( 95, max( 10, $wait + 10 ) ),
+				'headers' => [
+					'Accept' => 'application/json',
+				],
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			throw new VkApiException( $response->get_error_message() );
+		}
+
+		$status_code = (int) wp_remote_retrieve_response_code( $response );
+		$decoded = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( $status_code >= 400 ) {
+			throw new VkApiException(
+				sprintf( 'VK Long Poll request failed with HTTP status %d.', $status_code ),
+				$status_code,
+				is_array( $decoded ) ? $decoded : []
+			);
+		}
+
+		if ( ! is_array( $decoded ) ) {
+			throw new VkApiException( __( 'VK Long Poll returned an invalid JSON response.', 'cf7-vk' ) );
+		}
+
+		return $decoded;
+	}
+
+	/**
+	 * @throws VkApiException
+	 */
+	public function getConversationByMessage( string $peer_id, string $message_id ): array {
+		$response = $this->call(
+			'messages.getByConversationMessageId',
+			[
+				'peer_id' => $peer_id,
+				'conversation_message_ids' => $message_id,
+			]
+		);
+
+		if ( isset( $response['items'][0] ) && is_array( $response['items'][0] ) ) {
+			return (array) $response['items'][0];
+		}
+
+		return [];
+	}
+
+	/**
+	 * @throws VkApiException
+	 */
+	public function getUsers( array $user_ids ): array {
+		$user_ids = array_values( array_filter( array_map( 'intval', $user_ids ) ) );
+
+		if ( empty( $user_ids ) ) {
+			return [];
+		}
+
+		$response = $this->call(
+			'users.get',
+			[
+				'user_ids' => implode( ',', $user_ids ),
+				'fields' => 'screen_name',
+			]
+		);
+
+		return is_array( $response ) ? $response : [];
+	}
+
+	/**
 	 * @throws TransportNotConfigured
 	 * @throws VkApiException
 	 */
