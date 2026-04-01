@@ -26,7 +26,16 @@ const apiRequest = async (url, method = 'GET', body = null) => {
     const response = await fetch(targetUrl, query);
 
     if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
+        let message = `Request failed with status ${response.status}`;
+
+        try {
+            const errorData = await response.json();
+            message = errorData?.message || message;
+        } catch (e) {
+            // Ignore parsing errors and keep the fallback message.
+        }
+
+        throw new Error(message);
     }
 
     if (response.status === 204) {
@@ -66,6 +75,10 @@ export const apiSaveBot = async (botId, payload) => apiRequest(
 export const apiDeleteBot = async (botId) => apiRequest(
     `${cf7VkData.routes.bots}${botId}/?force=true`,
     'DELETE'
+);
+
+export const apiPingBot = async (botId) => apiRequest(
+    `${cf7VkData.routes.bots}${botId}/ping`
 );
 
 export const apiCreateChannel = async (title) => apiRequest(

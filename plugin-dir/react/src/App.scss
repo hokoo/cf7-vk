@@ -88,6 +88,28 @@ body.wp-admin {
   flex-wrap: wrap;
 }
 
+.cf7vk-notice {
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.cf7vk-notice.success {
+  background: #edfaef;
+  border: 1px solid #00a32a;
+}
+
+.cf7vk-notice.warning {
+  background: #fff8e5;
+  border: 1px solid #dba617;
+}
+
+.cf7vk-notice.error {
+  background: #fcf0f1;
+  border: 1px solid #d63638;
+}
+
 .empty-state {
   padding: 24px;
   background: #fff;

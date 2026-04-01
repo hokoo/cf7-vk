@@ -12,12 +12,13 @@ Development build of a VK transport adapter for Contact Form 7.
 
 == Description ==
 
-This plugin is under active development. The current milestone establishes the plugin shell and routing architecture for a VK-based Contact Form 7 adapter:
+This plugin is under active development. The current milestone establishes the routing shell and VK transport backend for a VK-based Contact Form 7 adapter:
 
 1. Create VK bot/community records in the plugin UI.
-2. Create routing channels in the plugin UI.
-3. Link Contact Form 7 forms to channels.
-4. Continue implementation of the VK transport layer in the next milestones.
+2. Verify VK credentials and fetch Long Poll bootstrap data from the admin screen.
+3. Create routing channels in the plugin UI.
+4. Link Contact Form 7 forms to channels.
+5. Continue with inbound chat discovery and linking in the next milestones.
 
 = Hooks =
 
@@ -32,6 +33,7 @@ Current shell action fired when a channel is asked to send an outgoing notificat
 = 0.1.0 =
 * Bootstrap plugin shell created from the reference architecture.
 * React admin shell, CPTs, relations, settings page, and migration scaffolding added.
+* VK API wrapper, bot ping endpoint, Long Poll bootstrap sync, and outbound send primitive added.
 
 == Upgrade Notice ==
 

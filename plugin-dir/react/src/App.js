@@ -69,7 +69,7 @@ const App = () => {
             <h1>{wp.i18n.__( 'CF7 VK settings', 'cf7-vk' )}</h1>
             <p className="screen-description">
                 {wp.i18n.__(
-                    'This first shell keeps the data model, REST surface, and admin structure in place while the VK transport layer is implemented in the next epic.',
+                    'The VK transport backend is now wired: you can verify community credentials here, while Long Poll chat discovery and linking remain the next milestone.',
                     'cf7-vk'
                 )}
             </p>

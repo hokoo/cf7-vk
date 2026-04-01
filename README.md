@@ -4,15 +4,16 @@ Development repository for a WordPress plugin that routes Contact Form 7 submiss
 
 ## Current milestone
 
-The first implementation epic establishes the reusable application shell:
+The repository now has the first two implementation layers in place:
 
 - standalone plugin bootstrap in `plugin-dir/`;
 - domain entities for bots, chats, channels, and form routing;
 - React-based admin shell under the Contact Form 7 menu;
 - REST field registration and `wpConnections` relations;
-- local development scaffolding for WordPress, PHP, Node, and Docker.
+- local development scaffolding for WordPress, PHP, Node, and Docker;
+- VK API transport primitives for connection checks, Long Poll bootstrap data, and outbound message sending.
 
-The actual VK transport layer is intentionally deferred to the next epic.
+The next milestone is inbound Long Poll processing and automatic chat linking by the per-bot authorization command.
 
 ## Repository layout
 
