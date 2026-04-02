@@ -73,73 +73,63 @@ const App = () => {
         return <div>{wp.i18n.__( 'Loading data...', 'cf7-vk' )}</div>;
     }
 
-    const safeBots = Array.isArray(bots) ? bots : [];
-    const safeChannels = Array.isArray(channels) ? channels : [];
-    const safeChats = Array.isArray(chats) ? chats : [];
-    const safeForms = Array.isArray(forms) ? forms : [];
-    const safeBotChatConnections = Array.isArray(bot2ChatConnections) ? bot2ChatConnections : [];
-    const safeChatChannelConnections = Array.isArray(chat2ChannelConnections) ? chat2ChannelConnections : [];
-    const safeBotConnections = Array.isArray(bot2ChannelConnections) ? bot2ChannelConnections : [];
-    const safeFormConnections = Array.isArray(form2ChannelConnections) ? form2ChannelConnections : [];
-
     return (
         <>
-            <h1>{wp.i18n.__( 'CF7 VK settings', 'cf7-vk' )}</h1>
-            <p className="screen-description">
-                {wp.i18n.__(
-                    'Configure VK communities, verify transport access, discover dialogs through Long Poll, and route Contact Form 7 notifications to selected VK conversations.',
-                    'cf7-vk'
-                )}
-            </p>
-
-            <div className="cf7vk-layout">
-                <div className="cf7vk-sidebar">
+            <h1>{wp.i18n.__( 'VK notificator settings', 'cf7-vk' )}</h1>
+            <div className="cf7-tg-container" id="cf7-vk-container">
+                <div className="settings-container">
                     <Settings />
-                    <NewBot onCreated={loadData} />
-                    <NewChannel onCreated={loadData} />
                 </div>
 
-                <div className="cf7vk-main">
-                    <section className="cf7vk-column">
-                        <h2>{wp.i18n.__( 'VK bots', 'cf7-vk' )}</h2>
-                        {safeBots.length === 0 ? (
-                            <div className="empty-state">
-                                {wp.i18n.__( 'No VK bot connections yet.', 'cf7-vk' )}
-                            </div>
-                        ) : safeBots.map((bot) => (
-                            <Bot
-                                key={bot.id}
-                                bot={bot}
-                                chats={safeChats}
-                                bot2ChatConnections={safeBotChatConnections}
-                                onUpdated={loadData}
-                            />
-                        ))}
-                    </section>
+                <div className="main-container">
+                    <div className="list-container bots-container">
+                        <div className="title-container">
+                            <h3 className="title">{wp.i18n.__( 'VK bots', 'cf7-vk' )}</h3>
+                            <NewBot onCreated={loadData} />
+                        </div>
 
-                    <section className="cf7vk-column">
-                        <h2>{wp.i18n.__( 'Channels', 'cf7-vk' )}</h2>
-                        {safeChannels.length === 0 ? (
-                            <div className="empty-state">
-                                {wp.i18n.__( 'No routing channels yet.', 'cf7-vk' )}
-                            </div>
-                        ) : safeChannels.map((channel) => (
-                            <Channel
-                                key={channel.id}
-                                channel={channel}
-                                bots={safeBots}
-                                chats={safeChats}
-                                forms={safeForms}
-                                bot2ChatConnections={safeBotChatConnections}
-                                chat2ChannelConnections={safeChatChannelConnections}
-                                bot2ChannelConnections={safeBotConnections}
-                                form2ChannelConnections={safeFormConnections}
-                                onUpdated={loadData}
-                            />
-                        ))}
-                    </section>
+                        <div className="bot-list">
+                            {bots.map((bot) => (
+                                <Bot
+                                    key={bot.id}
+                                    bot={bot}
+                                    chats={chats}
+                                    bot2ChatConnections={bot2ChatConnections}
+                                    onUpdated={loadData}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="list-container channels-container">
+                        <div className="title-container">
+                            <h3 className="title">{wp.i18n.__( 'Channels', 'cf7-vk' )}</h3>
+                            <NewChannel onCreated={loadData} />
+                        </div>
+
+                        <div className="channel-list">
+                            {channels.map((channel) => (
+                                <Channel
+                                    key={channel.id}
+                                    channel={channel}
+                                    bots={bots}
+                                    chats={chats}
+                                    forms={forms}
+                                    bot2ChatConnections={bot2ChatConnections}
+                                    chat2ChannelConnections={chat2ChannelConnections}
+                                    bot2ChannelConnections={bot2ChannelConnections}
+                                    form2ChannelConnections={form2ChannelConnections}
+                                    onUpdated={loadData}
+                                />
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <style>
+                {`.copyable::after { content: '` + wp.i18n.__( 'Copied!', 'cf7-vk' ) + `' !important }`}
+            </style>
         </>
     );
 };

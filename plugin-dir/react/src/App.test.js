@@ -28,5 +28,5 @@ beforeEach(() => {
 test('renders shell heading', async () => {
     render(<App />);
 
-    expect(await screen.findByText('CF7 VK settings')).toBeInTheDocument();
+    expect(await screen.findByText('VK notificator settings')).toBeInTheDocument();
 });

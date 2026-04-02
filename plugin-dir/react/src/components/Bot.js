@@ -1,6 +1,7 @@
 /* global wp */
 
 import React, {useState} from 'react';
+import BotView from './BotView';
 import {
     apiDeleteBot,
     apiDisconnectBotFromChat,
@@ -10,11 +11,12 @@ import {
     apiSetBotChatStatus
 } from '../utils/api';
 
-const getConnectionStatus = (botId, chatId, connections) => {
-    const relation = connections.find((item) => item?.data?.from === botId && item?.data?.to === chatId);
-    const status = relation?.data?.meta?.status?.[0];
+const getStatusClass = (status) => {
+    if ('online' === status || 'offline' === status) {
+        return status;
+    }
 
-    return status || 'pending';
+    return 'unknown';
 };
 
 const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
@@ -112,21 +114,6 @@ const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
         }
     };
 
-    const copyAuthCommand = async () => {
-        try {
-            await navigator.clipboard.writeText(form.authCommand);
-            setFeedback({
-                type: 'success',
-                message: wp.i18n.__( 'Authorization command copied.', 'cf7-vk' )
-            });
-        } catch (error) {
-            setFeedback({
-                type: 'warning',
-                message: wp.i18n.__( 'Copy the authorization command manually.', 'cf7-vk' )
-            });
-        }
-    };
-
     const relatedChatIds = bot2ChatConnections
         .filter((item) => item?.data?.from === bot.id)
         .map((item) => item.data.to);
@@ -140,7 +127,7 @@ const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
             return;
         }
 
-        const nextStatus = currentStatus === 'muted' ? 'active' : 'muted';
+        const nextStatus = 'muted' === currentStatus ? 'active' : 'muted';
         setSaving(true);
 
         try {
@@ -185,154 +172,34 @@ const Bot = ({bot, chats = [], bot2ChatConnections = [], onUpdated}) => {
         }
     };
 
-    const statusClass = bot.lastStatus || 'unknown';
+    const statusClass = getStatusClass(bot.lastStatus);
     const lastSyncAt = bot.lastSyncAt || wp.i18n.__( 'not synced', 'cf7-vk' );
     const longPollState = bot.longPollServer
         ? wp.i18n.__( 'ready', 'cf7-vk' )
         : wp.i18n.__( 'not ready', 'cf7-vk' );
 
     return (
-        <article className="cf7vk-card">
-            <form className="cf7vk-form" onSubmit={save}>
-                <div className="cf7vk-card-row">
-                    <h3>{bot.title?.rendered || wp.i18n.__( 'Untitled bot', 'cf7-vk' )}</h3>
-                    <span className={`cf7vk-status ${statusClass}`}>{statusClass}</span>
-                </div>
-
-                <label>
-                    <span>{wp.i18n.__( 'Title', 'cf7-vk' )}</span>
-                    <input value={form.title} onChange={updateField('title')} />
-                </label>
-
-                <label>
-                    <span>{wp.i18n.__( 'Group ID', 'cf7-vk' )}</span>
-                    <input value={form.groupId} onChange={updateField('groupId')} />
-                </label>
-
-                <label>
-                    <span>{wp.i18n.__( 'Access token', 'cf7-vk' )}</span>
-                    <input value={form.accessToken} onChange={updateField('accessToken')} />
-                </label>
-
-                <label>
-                    <span>{wp.i18n.__( 'API version', 'cf7-vk' )}</span>
-                    <input value={form.apiVersion} onChange={updateField('apiVersion')} />
-                </label>
-
-                <label>
-                    <span>{wp.i18n.__( 'Authorization command', 'cf7-vk' )}</span>
-                    <input value={form.authCommand} onChange={updateField('authCommand')} />
-                </label>
-
-                <p className="cf7vk-hint">
-                    {wp.i18n.__( 'The command is matched strictly after trim, without alias expansion.', 'cf7-vk' )}
-                </p>
-
-                {feedback ? (
-                    <div className={`cf7vk-notice ${feedback.type}`}>
-                        <strong>{feedback.message}</strong>
-                        {feedback.communityName ? (
-                            <div>
-                                {wp.i18n.__( 'VK community:', 'cf7-vk' )} {feedback.communityName}
-                            </div>
-                        ) : null}
-                        {feedback.longPollError ? (
-                            <div>
-                                {wp.i18n.__( 'Long Poll:', 'cf7-vk' )} {feedback.longPollError}
-                            </div>
-                        ) : null}
-                    </div>
-                ) : null}
-
-                <dl className="cf7vk-meta">
-                    <dt>{wp.i18n.__( 'Token constant', 'cf7-vk' )}</dt>
-                    <dd><code>{bot.accessTokenConst}</code></dd>
-                    <dt>{wp.i18n.__( 'Stored by constant', 'cf7-vk' )}</dt>
-                    <dd>{bot.isAccessTokenDefinedByConst ? wp.i18n.__( 'yes', 'cf7-vk' ) : wp.i18n.__( 'no', 'cf7-vk' )}</dd>
-                    <dt>{wp.i18n.__( 'Group constant', 'cf7-vk' )}</dt>
-                    <dd><code>{bot.groupIdConst}</code></dd>
-                    <dt>{wp.i18n.__( 'Group set by constant', 'cf7-vk' )}</dt>
-                    <dd>{bot.isGroupIdDefinedByConst ? wp.i18n.__( 'yes', 'cf7-vk' ) : wp.i18n.__( 'no', 'cf7-vk' )}</dd>
-                    <dt>{wp.i18n.__( 'Long Poll', 'cf7-vk' )}</dt>
-                    <dd>{longPollState}</dd>
-                    <dt>{wp.i18n.__( 'Last sync', 'cf7-vk' )}</dt>
-                    <dd>{lastSyncAt}</dd>
-                    <dt>{wp.i18n.__( 'Auth command', 'cf7-vk' )}</dt>
-                    <dd className="cf7vk-copy-row">
-                        <code>{form.authCommand}</code>
-                        <button className="button button-small" type="button" onClick={copyAuthCommand}>
-                            {wp.i18n.__( 'Copy', 'cf7-vk' )}
-                        </button>
-                    </dd>
-                </dl>
-
-                <div className="cf7vk-actions">
-                    <button className="button button-primary" type="submit" disabled={saving}>
-                        {wp.i18n.__( 'Save', 'cf7-vk' )}
-                    </button>
-                    <button className="button" type="button" onClick={ping} disabled={saving || pinging}>
-                        {pinging ? wp.i18n.__( 'Checking...', 'cf7-vk' ) : wp.i18n.__( 'Check connection', 'cf7-vk' )}
-                    </button>
-                    <button className="button" type="button" onClick={fetchUpdates} disabled={saving || fetching}>
-                        {fetching ? wp.i18n.__( 'Syncing...', 'cf7-vk' ) : wp.i18n.__( 'Fetch dialogs', 'cf7-vk' )}
-                    </button>
-                    <button className="button" type="button" onClick={remove} disabled={saving}>
-                        {wp.i18n.__( 'Remove', 'cf7-vk' )}
-                    </button>
-                </div>
-
-                <div>
-                    <strong>{wp.i18n.__( 'Linked dialogs', 'cf7-vk' )}</strong>
-                    <p className="cf7vk-hint">
-                        {wp.i18n.__( 'Pending dialogs are discovered but do not receive notifications until activated.', 'cf7-vk' )}
-                    </p>
-                    <ul className="cf7vk-list">
-                        {chatsForBot.length === 0 ? (
-                            <li>{wp.i18n.__( 'No dialogs linked yet.', 'cf7-vk' )}</li>
-                        ) : chatsForBot.map((chat) => {
-                            const status = getConnectionStatus(bot.id, chat.id, bot2ChatConnections);
-                            const title = chat.title?.rendered || chat.displayName || `#${chat.id}`;
-
-                            return (
-                                <li key={chat.id} className={`cf7vk-chat-status ${status}`}>
-                                    <span>{title}</span>
-                                    <span>{status}</span>
-                                    <div className="cf7vk-actions">
-                                        {status === 'pending' ? (
-                                            <button
-                                                className="button button-small"
-                                                type="button"
-                                                onClick={() => handleActivatePendingChat(chat.id)}
-                                                disabled={saving}
-                                            >
-                                                {wp.i18n.__( 'Activate', 'cf7-vk' )}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                className="button button-small"
-                                                type="button"
-                                                onClick={() => handleToggleChatStatus(chat.id, status)}
-                                                disabled={saving}
-                                            >
-                                                {status === 'muted' ? wp.i18n.__( 'Unmute', 'cf7-vk' ) : wp.i18n.__( 'Mute', 'cf7-vk' )}
-                                            </button>
-                                        )}
-                                        <button
-                                            className="button button-small"
-                                            type="button"
-                                            onClick={() => disconnectChat(chat.id)}
-                                            disabled={saving}
-                                        >
-                                            {wp.i18n.__( 'Remove', 'cf7-vk' )}
-                                        </button>
-                                    </div>
-                                </li>
-                            );
-                        })}
-                    </ul>
-                </div>
-            </form>
-        </article>
+        <BotView
+            bot={bot}
+            form={form}
+            saving={saving}
+            pinging={pinging}
+            fetching={fetching}
+            feedback={feedback}
+            statusClass={statusClass}
+            longPollState={longPollState}
+            lastSyncAt={lastSyncAt}
+            chatsForBot={chatsForBot}
+            bot2ChatConnections={bot2ChatConnections}
+            updateField={updateField}
+            save={save}
+            ping={ping}
+            fetchUpdates={fetchUpdates}
+            remove={remove}
+            handleToggleChatStatus={handleToggleChatStatus}
+            handleActivatePendingChat={handleActivatePendingChat}
+            disconnectChat={disconnectChat}
+        />
     );
 };
 

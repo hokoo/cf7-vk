@@ -4,43 +4,26 @@ import React, {useState} from 'react';
 import {apiCreateChannel} from '../utils/api';
 
 const NewChannel = ({onCreated}) => {
-    const [title, setTitle] = useState('');
     const [saving, setSaving] = useState(false);
 
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-
-        if (!title.trim()) {
-            return;
-        }
-
+    const handleCreateChannel = async () => {
         setSaving(true);
 
         try {
-            await apiCreateChannel(title);
-            setTitle('');
+            await apiCreateChannel(wp.i18n.__( 'VK Channel', 'cf7-vk' ));
             await onCreated();
+        } catch (error) {
+            console.error('Error creating channel:', error);
+            alert(wp.i18n.__( 'Failed to create channel', 'cf7-vk' ));
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <section className="cf7vk-card">
-            <h2>{wp.i18n.__( 'Add channel', 'cf7-vk' )}</h2>
-            <form className="cf7vk-form" onSubmit={handleSubmit}>
-                <label>
-                    <span>{wp.i18n.__( 'Channel title', 'cf7-vk' )}</span>
-                    <input value={title} onChange={(event) => setTitle(event.target.value)} />
-                </label>
-
-                <div className="cf7vk-actions">
-                    <button className="button button-primary" type="submit" disabled={saving}>
-                        {wp.i18n.__( 'Create channel', 'cf7-vk' )}
-                    </button>
-                </div>
-            </form>
-        </section>
+        <button className="add-button add-channel-button" onClick={handleCreateChannel} disabled={saving}>
+            {wp.i18n.__( 'Create Channel', 'cf7-vk' )}
+        </button>
     );
 };
 

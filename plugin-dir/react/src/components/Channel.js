@@ -1,6 +1,7 @@
 /* global wp */
 
 import React, {useMemo, useState} from 'react';
+import ChannelView from './ChannelView';
 import {
     apiConnectBotToChannel,
     apiConnectChatToChannel,
@@ -11,6 +12,11 @@ import {
     apiDisconnectFormFromChannel,
     apiSaveChannel
 } from '../utils/api';
+
+const getBotTitle = (bot) => bot?.title?.rendered || bot?.title || `#${bot.id}`;
+const getChatTitle = (chat) => chat?.title?.rendered || chat?.displayName || `#${chat.id}`;
+const getFormTitle = (form) => form?.title?.rendered || form?.title || `#${form.id}`;
+const getBotStatusClass = (bot) => ('online' === bot?.lastStatus || 'offline' === bot?.lastStatus) ? bot.lastStatus : 'unknown';
 
 const Channel = ({
     channel,
@@ -23,8 +29,10 @@ const Channel = ({
     form2ChannelConnections,
     onUpdated
 }) => {
-    const [title, setTitle] = useState(channel.title?.rendered || '');
+    const [titleValue, setTitleValue] = useState(channel.title?.rendered || '');
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
+    const [showFormSelector, setShowFormSelector] = useState(false);
 
     const botConnection = useMemo(
         () => bot2ChannelConnections.find((item) => item?.data?.to === channel.id),
@@ -38,42 +46,108 @@ const Channel = ({
         [form2ChannelConnections, channel.id]
     );
 
+    const linkedChatIds = useMemo(
+        () => chat2ChannelConnections
+            .filter((item) => item?.data?.to === channel.id)
+            .map((item) => item.data.from),
+        [chat2ChannelConnections, channel.id]
+    );
+
     const assignedBot = botConnection
         ? bots.find((bot) => bot.id === botConnection.data.from)
         : null;
 
-    const assignedForms = forms.filter((form) => linkedFormIds.includes(form.id));
+    const botForChannel = assignedBot ? {
+        id: assignedBot.id,
+        title: getBotTitle(assignedBot),
+        statusClass: getBotStatusClass(assignedBot)
+    } : null;
+
     const botChatConnections = assignedBot
         ? bot2ChatConnections.filter((item) => item?.data?.from === assignedBot.id)
         : [];
-    const availableChats = chats.filter((chat) => botChatConnections.some((item) => item?.data?.to === chat.id));
-    const linkedChatIds = chat2ChannelConnections
-        .filter((item) => item?.data?.to === channel.id)
-        .map((item) => item.data.from);
-    const getFormTitle = (form) => form?.title?.rendered || form?.title || `#${form.id}`;
-    const getBotTitle = (bot) => bot?.title?.rendered || bot?.title || `#${bot.id}`;
-    const getChatTitle = (chat) => chat?.title?.rendered || chat?.displayName || `#${chat.id}`;
 
-    const saveTitle = async (event) => {
-        event.preventDefault();
-        const nextTitle = title.trim();
+    const availableForms = forms.filter((form) => !linkedFormIds.includes(form.id)).map((form) => ({
+        id: form.id,
+        title: getFormTitle(form)
+    }));
 
-        if (!nextTitle) {
+    const formsForChannel = forms.filter((form) => linkedFormIds.includes(form.id)).map((form) => ({
+        id: form.id,
+        title: getFormTitle(form)
+    }));
+
+    const availableBots = bots
+        .filter((bot) => !assignedBot || bot.id !== assignedBot.id)
+        .map((bot) => ({
+            id: bot.id,
+            title: getBotTitle(bot)
+        }));
+
+    const renderedChats = chats
+        .filter((chat) => botChatConnections.some((item) => item?.data?.to === chat.id))
+        .map((chat) => {
+            const relation = botChatConnections.find((item) => item?.data?.to === chat.id);
+            const statusMeta = relation?.data?.meta?.status?.[0] || 'pending';
+            const isLinkedToChannel = linkedChatIds.includes(chat.id);
+
+            if ('pending' === statusMeta) {
+                return null;
+            }
+
+            return {
+                id: chat.id,
+                title: getChatTitle(chat),
+                status: 'muted' === statusMeta ? 'Muted' : (isLinkedToChannel ? 'Active' : 'Paused')
+            };
+        })
+        .filter(Boolean);
+
+    const renderChannelClasses = () => {
+        let classes = '';
+
+        if (assignedBot && 'online' === getBotStatusClass(assignedBot)) {
+            classes += ' has-bot-online';
+        }
+
+        if (renderedChats.some((chat) => 'Active' === chat.status)) {
+            classes += ' has-active-chats';
+        }
+
+        if (formsForChannel.length > 0) {
+            classes += ' has-forms';
+        }
+
+        return classes;
+    };
+
+    const saveTitle = async () => {
+        const nextTitle = titleValue.trim();
+
+        if (!nextTitle || nextTitle === (channel.title?.rendered || '')) {
             return;
         }
 
         setSaving(true);
+        setError(null);
 
         try {
             await apiSaveChannel(channel.id, {title: nextTitle});
             await onUpdated();
+        } catch (err) {
+            setError(wp.i18n.__( 'Failed to update title', 'cf7-vk' ));
         } finally {
             setSaving(false);
         }
     };
 
-    const onBotChange = async (event) => {
-        const nextBotId = event.target.value;
+    const handleKeyDown = (event) => {
+        if ('Enter' === event.key) {
+            saveTitle();
+        }
+    };
+
+    const handleBotSelect = async (selectedOption) => {
         setSaving(true);
 
         try {
@@ -81,8 +155,8 @@ const Channel = ({
                 await apiDisconnectBotFromChannel(botConnection.data.id);
             }
 
-            if (nextBotId) {
-                await apiConnectBotToChannel(parseInt(nextBotId, 10), channel.id);
+            if (selectedOption?.value) {
+                await apiConnectBotToChannel(selectedOption.value, channel.id);
             }
 
             await onUpdated();
@@ -91,18 +165,75 @@ const Channel = ({
         }
     };
 
-    const toggleForm = async (formId, isLinked) => {
+    const handleRemoveBot = async () => {
+        if (!botConnection) {
+            return;
+        }
+
         setSaving(true);
 
         try {
-            const connection = form2ChannelConnections.find(
-                (item) => item?.data?.from === formId && item?.data?.to === channel.id
-            );
+            await apiDisconnectBotFromChannel(botConnection.data.id);
+            await onUpdated();
+        } finally {
+            setSaving(false);
+        }
+    };
 
-            if (isLinked && connection) {
-                await apiDisconnectFormFromChannel(connection.data.id);
-            } else if (!isLinked) {
-                await apiConnectFormToChannel(formId, channel.id);
+    const handleAddForm = () => setShowFormSelector((current) => !current);
+
+    const handleFormSelect = async (selectedOption) => {
+        if (!selectedOption?.value) {
+            setShowFormSelector(false);
+            return;
+        }
+
+        setSaving(true);
+
+        try {
+            await apiConnectFormToChannel(selectedOption.value, channel.id);
+            await onUpdated();
+        } finally {
+            setSaving(false);
+            setShowFormSelector(false);
+        }
+    };
+
+    const handleRemoveForm = async (formId) => {
+        const connection = form2ChannelConnections.find(
+            (item) => item?.data?.from === formId && item?.data?.to === channel.id
+        );
+
+        if (!connection) {
+            return;
+        }
+
+        setSaving(true);
+
+        try {
+            await apiDisconnectFormFromChannel(connection.data.id);
+            await onUpdated();
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleToggleChat = async (chatId, status) => {
+        const connection = chat2ChannelConnections.find(
+            (item) => item?.data?.from === chatId && item?.data?.to === channel.id
+        );
+
+        if ('Muted' === status) {
+            return;
+        }
+
+        setSaving(true);
+
+        try {
+            if (connection) {
+                await apiDisconnectChatFromChannel(connection.data.id);
+            } else {
+                await apiConnectChatToChannel(chatId, channel.id);
             }
 
             await onUpdated();
@@ -111,7 +242,7 @@ const Channel = ({
         }
     };
 
-    const remove = async () => {
+    const deleteChannel = async () => {
         if (!window.confirm(wp.i18n.__( 'Remove this channel?', 'cf7-vk' ))) {
             return;
         }
@@ -126,126 +257,44 @@ const Channel = ({
         }
     };
 
-    const toggleChat = async (chatId, isLinked) => {
-        setSaving(true);
-
-        try {
-            const connection = chat2ChannelConnections.find(
-                (item) => item?.data?.from === chatId && item?.data?.to === channel.id
-            );
-
-            if (isLinked && connection) {
-                await apiDisconnectChatFromChannel(connection.data.id);
-            } else if (!isLinked) {
-                await apiConnectChatToChannel(chatId, channel.id);
-            }
-
-            await onUpdated();
-        } finally {
-            setSaving(false);
+    const getToggleButtonLabel = (status) => {
+        switch (status.toLowerCase()) {
+            case 'active':
+                return wp.i18n.__( 'Pause', 'cf7-vk' );
+            case 'paused':
+                return wp.i18n.__( 'Activate', 'cf7-vk' );
+            case 'muted':
+                return wp.i18n.__( 'Muted by bot', 'cf7-vk' );
+            default:
+                return '';
         }
     };
 
     return (
-        <article className="cf7vk-card">
-            <form className="cf7vk-form" onSubmit={saveTitle}>
-                <label>
-                    <span>{wp.i18n.__( 'Channel title', 'cf7-vk' )}</span>
-                    <input value={title} onChange={(event) => setTitle(event.target.value)} disabled={saving} />
-                </label>
-
-                <div className="cf7vk-actions">
-                    <button className="button button-primary" type="submit" disabled={saving || !title.trim()}>
-                        {wp.i18n.__( 'Save channel', 'cf7-vk' )}
-                    </button>
-                </div>
-            </form>
-
-            <label className="cf7vk-form">
-                <span>{wp.i18n.__( 'Assigned bot', 'cf7-vk' )}</span>
-                <select value={assignedBot?.id || ''} onChange={onBotChange} disabled={saving}>
-                    <option value="">{wp.i18n.__( 'No bot assigned', 'cf7-vk' )}</option>
-                    {bots.map((bot) => (
-                        <option key={bot.id} value={bot.id}>
-                            {getBotTitle(bot)}
-                        </option>
-                    ))}
-                </select>
-            </label>
-
-            <div>
-                <strong>{wp.i18n.__( 'Connected forms', 'cf7-vk' )}</strong>
-                <ul className="cf7vk-list">
-                    {forms.map((form) => {
-                        const isLinked = linkedFormIds.includes(form.id);
-                        return (
-                            <li key={form.id}>
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={isLinked}
-                                        onChange={() => toggleForm(form.id, isLinked)}
-                                        disabled={saving}
-                                    />
-                                    {' '}
-                                    {getFormTitle(form)}
-                                </label>
-                            </li>
-                        );
-                    })}
-                </ul>
-            </div>
-
-            <div>
-                <strong>{wp.i18n.__( 'Dialogs in this channel', 'cf7-vk' )}</strong>
-                <ul className="cf7vk-list">
-                    {availableChats.length === 0 ? (
-                        <li>{wp.i18n.__( 'No linked dialogs are available for this bot yet.', 'cf7-vk' )}</li>
-                    ) : availableChats.map((chat) => {
-                        const isLinked = linkedChatIds.includes(chat.id);
-                        const botChatConnection = botChatConnections.find((item) => item?.data?.to === chat.id);
-                        const status = botChatConnection?.data?.meta?.status?.[0] || 'pending';
-
-                        return (
-                            <li key={chat.id}>
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        checked={isLinked}
-                                        onChange={() => toggleChat(chat.id, isLinked)}
-                                        disabled={saving || (!isLinked && status !== 'active')}
-                                    />
-                                    {' '}
-                                    {getChatTitle(chat)} <span className={`cf7vk-inline-status ${status}`}>{status}</span>
-                                </label>
-                            </li>
-                        );
-                    })}
-                </ul>
-                <p className="cf7vk-hint">
-                    {wp.i18n.__( 'Only active dialogs can receive form notifications and be attached to a channel.', 'cf7-vk' )}
-                </p>
-            </div>
-
-            <div>
-                <strong>{wp.i18n.__( 'Summary', 'cf7-vk' )}</strong>
-                <ul className="cf7vk-list">
-                    <li>
-                        {wp.i18n.__( 'Bot:', 'cf7-vk' )}{' '}
-                        {assignedBot ? getBotTitle(assignedBot) : wp.i18n.__( 'not assigned', 'cf7-vk' )}
-                    </li>
-                    <li>
-                        {wp.i18n.__( 'Forms:', 'cf7-vk' )} {assignedForms.length}
-                    </li>
-                </ul>
-            </div>
-
-            <div className="cf7vk-actions">
-                <button className="button" type="button" onClick={remove} disabled={saving}>
-                    {wp.i18n.__( 'Remove channel', 'cf7-vk' )}
-                </button>
-            </div>
-        </article>
+        <ChannelView
+            channel={channel}
+            titleValue={titleValue}
+            saving={saving}
+            error={error}
+            handleTitleChange={(event) => setTitleValue(event.target.value)}
+            handleKeyDown={handleKeyDown}
+            saveTitle={saveTitle}
+            botForChannel={botForChannel}
+            renderedChats={renderedChats}
+            formsForChannel={formsForChannel}
+            availableForms={availableForms}
+            showFormSelector={showFormSelector}
+            handleAddForm={handleAddForm}
+            handleFormSelect={handleFormSelect}
+            handleRemoveForm={handleRemoveForm}
+            availableBots={availableBots}
+            handleBotSelect={handleBotSelect}
+            handleRemoveBot={handleRemoveBot}
+            handleToggleChat={handleToggleChat}
+            deleteChannel={deleteChannel}
+            getToggleButtonLabel={getToggleButtonLabel}
+            renderChannelClasses={renderChannelClasses}
+        />
     );
 };
 
