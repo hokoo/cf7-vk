@@ -10,14 +10,13 @@ const NewBot = ({onCreated}) => {
         setSaving(true);
 
         try {
-            await apiCreateBot({
+            const createdBot = await apiCreateBot({
                 title: wp.i18n.__( 'VK Bot', 'cf7-vk' ),
                 groupId: '',
                 accessToken: '',
-                apiVersion: '5.199',
                 authCommand: 'start'
             });
-            await onCreated();
+            onCreated(createdBot);
         } catch (error) {
             console.error('Error creating bot:', error);
             alert(wp.i18n.__( 'Failed to create bot', 'cf7-vk' ));

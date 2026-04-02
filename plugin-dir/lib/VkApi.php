@@ -40,6 +40,16 @@ class VkApi {
 			]
 		);
 
+		if (
+			is_array( $response ) &&
+			isset( $response['groups'] ) &&
+			is_array( $response['groups'] ) &&
+			isset( $response['groups'][0] ) &&
+			is_array( $response['groups'][0] )
+		) {
+			return (array) $response['groups'][0];
+		}
+
 		if ( is_array( $response ) && $this->isSequentialArray( $response ) ) {
 			return (array) reset( $response );
 		}

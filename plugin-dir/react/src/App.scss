@@ -235,6 +235,69 @@ ul#adminmenu > li.current > a.current:after {
               border-top-width: 0;
               color: #7499b3;
             }
+
+            .bot-command-shell {
+              position: relative;
+
+              &.editing {
+                .bot-command-actions {
+                  opacity: 0;
+                  pointer-events: none;
+                }
+              }
+
+              &:hover {
+                .bot-command-actions {
+                  opacity: 1;
+                }
+              }
+
+              .bot-command {
+                min-height: 27px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0 52px;
+              }
+
+              .bot-command-actions {
+                position: absolute;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                opacity: 0;
+                transition: opacity 0.15s ease;
+                pointer-events: none;
+              }
+
+              .command-action {
+                pointer-events: auto;
+                background: none;
+                border: none;
+                color: #9cb6c7;
+                cursor: pointer;
+                font-size: 10px;
+                height: 100%;
+                padding: 0 8px;
+                text-transform: uppercase;
+
+                &:hover {
+                  color: #d3e4ef;
+                }
+              }
+
+              .edit-command {
+                width: 100%;
+                min-height: 27px;
+                background-color: #112747;
+                border: 1px solid #1b4568;
+                color: #d3e4ef;
+                box-shadow: none;
+                text-align: center;
+                font-family: monospace;
+              }
+            }
           }
 
           .bot-token {
@@ -242,7 +305,7 @@ ul#adminmenu > li.current > a.current:after {
             color: #465b79;
 
             .show-token {
-              cursor: default;
+              cursor: pointer;
               font-family: monospace;
 
               &.const {
@@ -250,15 +313,31 @@ ul#adminmenu > li.current > a.current:after {
               }
             }
 
-            .php-const-hint {
-              cursor: pointer;
-              font-size: 10px;
-            }
-
-            .token-value {
+            .token-value,
+            .edit-token {
               font-family: monospace, serif;
               padding: 2px 5px;
               background-color: #09090c;
+
+              &.empty {
+                padding: 0;
+                background-color: transparent;
+              }
+            }
+
+            .edit-token {
+              position: absolute;
+              color: inherit;
+              line-height: 100%;
+              text-align: inherit;
+              width: 98%;
+              height: 45px;
+              left: 50%;
+              top: 50%;
+              transform: translate(-50%, -50%);
+              box-shadow: none;
+              border: 1px solid #0c88b447;
+              padding: 0 10px;
             }
           }
         }
@@ -283,7 +362,7 @@ ul#adminmenu > li.current > a.current:after {
         .bot-fields {
           .bot-field-grid {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-columns: minmax(0, 1fr);
             gap: 10px;
           }
 
@@ -304,39 +383,6 @@ ul#adminmenu > li.current > a.current:after {
             &--wide {
               grid-column: span 2;
             }
-          }
-
-          .field-hint {
-            margin-top: 8px;
-            display: block;
-            color: #656565;
-          }
-        }
-
-        .bot-details {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 8px 16px;
-
-          .bot-detail {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-          }
-
-          .label {
-            color: #656565;
-            font-size: 11px;
-            text-transform: uppercase;
-          }
-
-          .value {
-            color: #b5b5b5;
-            font-size: 13px;
-          }
-
-          .mono {
-            font-family: monospace;
           }
         }
 

@@ -10,8 +10,8 @@ const NewChannel = ({onCreated}) => {
         setSaving(true);
 
         try {
-            await apiCreateChannel(wp.i18n.__( 'VK Channel', 'cf7-vk' ));
-            await onCreated();
+            const createdChannel = await apiCreateChannel(wp.i18n.__( 'VK Channel', 'cf7-vk' ));
+            onCreated(createdChannel);
         } catch (error) {
             console.error('Error creating channel:', error);
             alert(wp.i18n.__( 'Failed to create channel', 'cf7-vk' ));

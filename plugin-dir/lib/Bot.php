@@ -313,10 +313,11 @@ class Bot extends Entity implements wpPostAble {
 		try {
 			$group_id = $this->getNormalizedGroupId();
 			$community = $this->getApi()->getCommunity( $group_id );
+			$community_name = (string) ( $community['name'] ?? $community['screen_name'] ?? $this->getTitle() );
 
 			$details = [
 				'groupId' => $group_id,
-				'communityName' => (string) ( $community['name'] ?? $community['screen_name'] ?? $this->getTitle() ),
+				'communityName' => $community_name,
 				'longPollReady' => false,
 				'longPollError' => '',
 			];
@@ -364,6 +365,8 @@ class Bot extends Entity implements wpPostAble {
 				$details['longPollError'] = $e->getMessage();
 			}
 
+			$this->persistCommunityTitle( $community_name );
+
 			return $details;
 		} catch ( TransportNotConfigured | VkApiException $e ) {
 			$this->markTransportFailure(
@@ -377,6 +380,39 @@ class Bot extends Entity implements wpPostAble {
 
 			throw $e;
 		}
+	}
+
+	private function persistCommunityTitle( string $community_name ): void {
+		$community_name = trim( $community_name );
+
+		if ( '' === $community_name || $community_name === $this->getTitle() ) {
+			return;
+		}
+
+		$result = wp_update_post(
+			[
+				'ID' => $this->getPost()->ID,
+				'post_title' => $community_name,
+			],
+			true
+		);
+
+		if ( is_wp_error( $result ) ) {
+			$this->logger->write(
+				[
+					'botTitle' => $this->getTitle(),
+					'wpPostID' => $this->getPost()->ID,
+					'error' => $result->get_error_message(),
+					'communityName' => $community_name,
+				],
+				'VK bot title could not be updated.',
+				Logger::LEVEL_WARNING
+			);
+
+			return;
+		}
+
+		$this->setTitle( $community_name );
 	}
 
 	public function ping(): bool {

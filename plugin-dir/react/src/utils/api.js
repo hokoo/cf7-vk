@@ -27,15 +27,20 @@ const apiRequest = async (url, method = 'GET', body = null) => {
 
     if (!response.ok) {
         let message = `Request failed with status ${response.status}`;
+        let errorData = null;
 
         try {
-            const errorData = await response.json();
+            errorData = await response.json();
             message = errorData?.message || message;
         } catch (e) {
             // Ignore parsing errors and keep the fallback message.
         }
 
-        throw new Error(message);
+        const error = new Error(message);
+        error.status = response.status;
+        error.data = errorData;
+
+        throw error;
     }
 
     if (response.status === 204) {
@@ -56,7 +61,7 @@ export const fetchFormsForChannels = async () => apiRequest(cf7VkData.routes.rel
 export const apiFetchSettings = async () => apiRequest(cf7VkData.routes.settings);
 export const apiSaveSettings = async (settings) => apiRequest(cf7VkData.routes.settings, 'POST', settings);
 
-export const apiCreateBot = async ({title, groupId, accessToken, apiVersion, authCommand}) => apiRequest(
+export const apiCreateBot = async ({title, groupId, accessToken, authCommand}) => apiRequest(
     cf7VkData.routes.bots,
     'POST',
     {
@@ -64,7 +69,6 @@ export const apiCreateBot = async ({title, groupId, accessToken, apiVersion, aut
         status: 'publish',
         groupId,
         accessToken,
-        apiVersion,
         authCommand
     }
 );

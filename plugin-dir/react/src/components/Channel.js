@@ -27,7 +27,11 @@ const Channel = ({
     chat2ChannelConnections,
     bot2ChannelConnections,
     form2ChannelConnections,
-    onUpdated
+    onChannelSaved,
+    onChannelRemoved,
+    refreshBotChannelConnections,
+    refreshChatChannelConnections,
+    refreshFormChannelConnections
 }) => {
     const [titleValue, setTitleValue] = useState(channel.title?.rendered || '');
     const [saving, setSaving] = useState(false);
@@ -132,8 +136,8 @@ const Channel = ({
         setError(null);
 
         try {
-            await apiSaveChannel(channel.id, {title: nextTitle});
-            await onUpdated();
+            const savedChannel = await apiSaveChannel(channel.id, {title: nextTitle});
+            onChannelSaved(savedChannel);
         } catch (err) {
             setError(wp.i18n.__( 'Failed to update title', 'cf7-vk' ));
         } finally {
@@ -159,7 +163,7 @@ const Channel = ({
                 await apiConnectBotToChannel(selectedOption.value, channel.id);
             }
 
-            await onUpdated();
+            await refreshBotChannelConnections();
         } finally {
             setSaving(false);
         }
@@ -174,7 +178,7 @@ const Channel = ({
 
         try {
             await apiDisconnectBotFromChannel(botConnection.data.id);
-            await onUpdated();
+            await refreshBotChannelConnections();
         } finally {
             setSaving(false);
         }
@@ -192,7 +196,7 @@ const Channel = ({
 
         try {
             await apiConnectFormToChannel(selectedOption.value, channel.id);
-            await onUpdated();
+            await refreshFormChannelConnections();
         } finally {
             setSaving(false);
             setShowFormSelector(false);
@@ -212,7 +216,7 @@ const Channel = ({
 
         try {
             await apiDisconnectFormFromChannel(connection.data.id);
-            await onUpdated();
+            await refreshFormChannelConnections();
         } finally {
             setSaving(false);
         }
@@ -236,7 +240,7 @@ const Channel = ({
                 await apiConnectChatToChannel(chatId, channel.id);
             }
 
-            await onUpdated();
+            await refreshChatChannelConnections();
         } finally {
             setSaving(false);
         }
@@ -247,13 +251,18 @@ const Channel = ({
             return;
         }
 
+        let removed = false;
+
         setSaving(true);
 
         try {
             await apiDeleteChannel(channel.id);
-            await onUpdated();
+            removed = true;
+            onChannelRemoved(channel.id);
         } finally {
-            setSaving(false);
+            if (!removed) {
+                setSaving(false);
+            }
         }
     };
 
