@@ -59,26 +59,36 @@ class Util {
 	}
 
 	public static function getChatByPeerId( string $peer_id ): ?Chat {
-		$chat_ids = get_posts(
-			[
-				'post_type' => Client::CPT_CHAT,
-				'posts_per_page' => -1,
-				'fields' => 'ids',
-				'post_status' => 'any',
-				'meta_query' => [
-					[
-						'key' => 'peerId',
-						'value' => $peer_id,
-					],
-				],
-			]
-		);
+		$peer_id = trim( $peer_id );
 
-		if ( empty( $chat_ids ) ) {
+		if ( '' === $peer_id ) {
 			return null;
 		}
 
-		return new Chat( (int) $chat_ids[0] );
+		$pattern = sprintf(
+			'"peerId"[[:space:]]*:[[:space:]]*"%s"',
+			preg_quote( $peer_id, '/' )
+		);
+
+		$chat_id = (int) self::getWPDB()->get_var(
+			self::getWPDB()->prepare(
+				"SELECT ID
+				FROM " . self::getWPDB()->posts . "
+				WHERE post_type = %s
+					AND post_status <> 'trash'
+					AND post_content_filtered REGEXP %s
+				ORDER BY ID ASC
+				LIMIT 1",
+				Client::CPT_CHAT,
+				$pattern
+			)
+		);
+
+		if ( $chat_id <= 0 ) {
+			return null;
+		}
+
+		return new Chat( $chat_id );
 	}
 
 	/**
