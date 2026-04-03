@@ -13,6 +13,7 @@ import {
 
 const SAVE_DEBOUNCE_MS = 700;
 const RETRY_DELAY_MS = 5000;
+const POLL_CONTINUE_DELAY_MS = 250;
 
 const getStatusClass = (status) => {
     if ('online' === status || 'offline' === status) {
@@ -109,6 +110,7 @@ const Bot = ({
     const saveTimeoutRef = useRef(null);
     const pollTimeoutRef = useRef(null);
     const isSavingRef = useRef(false);
+    const pollInFlightRef = useRef(false);
     const previousBotIdRef = useRef(bot.id);
     const lastSavedFormRef = useRef(buildFormState(bot));
     const lastSavedSnapshotRef = useRef(serializeForm(lastSavedFormRef.current));
@@ -214,23 +216,37 @@ const Bot = ({
                 return;
             }
 
+            if (pollInFlightRef.current) {
+                scheduleNextPoll(RETRY_DELAY_MS);
+                return;
+            }
+
+            pollInFlightRef.current = true;
             setFetching(true);
 
             try {
                 const result = await apiFetchUpdates(bot.id);
+                const hasLinkedDialogChanges = Boolean(result?.hasNewChats || result?.hasNewConnections);
+                const shouldRefreshBotState = Boolean(result?.failed);
+                const wasSkippedByLock = Boolean(result?.locked);
 
                 if (cancelled) {
                     return;
                 }
 
-                if (result?.updatesCount || result?.hasNewChats || result?.hasNewConnections || result?.failed) {
+                if (wasSkippedByLock) {
+                    scheduleNextPoll(RETRY_DELAY_MS);
+                    return;
+                }
+
+                if (hasLinkedDialogChanges) {
                     await refreshBotRuntimeRef.current();
-                } else {
+                } else if (shouldRefreshBotState) {
                     await refreshBotsRef.current();
                 }
 
                 if (!cancelled) {
-                    scheduleNextPoll();
+                    scheduleNextPoll(shouldRefreshBotState ? RETRY_DELAY_MS : POLL_CONTINUE_DELAY_MS);
                 }
             } catch (error) {
                 if (cancelled) {
@@ -250,6 +266,7 @@ const Bot = ({
 
                 scheduleNextPoll(RETRY_DELAY_MS);
             } finally {
+                pollInFlightRef.current = false;
                 if (!cancelled) {
                     setFetching(false);
                 }

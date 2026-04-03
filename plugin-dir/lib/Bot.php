@@ -430,84 +430,105 @@ class Bot extends Entity implements wpPostAble {
 	 * @throws VkApiException
 	 */
 	public function fetchUpdates(): array {
-		$this->ensureLongPollBootstrap();
+		$empty_result = [
+			'updates' => [],
+			'hasNewChats' => false,
+			'hasNewConnections' => false,
+			'failed' => 0,
+			'locked' => true,
+			'ts' => $this->getLongPollTs(),
+			'updatesCount' => 0,
+		];
+
+		if ( ! $this->acquireFetchUpdatesLock() ) {
+			return $empty_result;
+		}
 
 		try {
-			$response = $this->getApi()->checkLongPoll(
-				$this->getLongPollServer(),
-				$this->getLongPollKey(),
-				$this->getLongPollTs(),
-				self::LONG_POLL_WAIT
-			);
-		} catch ( VkApiException $e ) {
-			$this->markTransportFailure(
-				$e,
-				'VK Long Poll request failed.',
-				Logger::LEVEL_WARNING,
+			$this->ensureLongPollBootstrap();
+
+			try {
+				$response = $this->getApi()->checkLongPoll(
+					$this->getLongPollServer(),
+					$this->getLongPollKey(),
+					$this->getLongPollTs(),
+					self::LONG_POLL_WAIT
+				);
+			} catch ( VkApiException $e ) {
+				$this->markTransportFailure(
+					$e,
+					'VK Long Poll request failed.',
+					Logger::LEVEL_WARNING,
+					[
+						'groupId' => $this->getGroupId(),
+					]
+				);
+
+				throw $e;
+			}
+
+			$failed = (int) ( $response['failed'] ?? 0 );
+
+			if ( 1 === $failed ) {
+				$new_ts = (string) ( $response['ts'] ?? '' );
+
+				if ( '' !== $new_ts ) {
+					$this->persistStateSafely(
+						[
+							'longPollTs' => $new_ts,
+							'lastSyncAt' => gmdate( 'c' ),
+							'lastStatus' => self::STATUS_ONLINE,
+						]
+					);
+				}
+
+				return [
+					'updates' => [],
+					'hasNewChats' => false,
+					'hasNewConnections' => false,
+					'failed' => 1,
+					'locked' => false,
+					'ts' => $new_ts,
+				];
+			}
+
+			if ( 2 === $failed || 3 === $failed ) {
+				$this->refreshLongPollBootstrap();
+
+				return [
+					'updates' => [],
+					'hasNewChats' => false,
+					'hasNewConnections' => false,
+					'failed' => $failed,
+					'locked' => false,
+					'ts' => $this->getLongPollTs(),
+				];
+			}
+
+			$updates = is_array( $response['updates'] ?? null ) ? $response['updates'] : [];
+			$new_ts = (string) ( $response['ts'] ?? $this->getLongPollTs() );
+			$processed = $this->processLongPollUpdates( $updates );
+
+			$this->persistStateSafely(
 				[
-					'groupId' => $this->getGroupId(),
+					'longPollTs' => $new_ts,
+					'lastSyncAt' => gmdate( 'c' ),
+					'lastStatus' => self::STATUS_ONLINE,
 				]
 			);
 
-			throw $e;
+			return array_merge(
+				$processed,
+				[
+					'failed' => 0,
+					'locked' => false,
+					'ts' => $new_ts,
+					'updatesCount' => count( $updates ),
+				]
+			);
+		} finally {
+			$this->releaseFetchUpdatesLock();
 		}
-
-		$failed = (int) ( $response['failed'] ?? 0 );
-
-		if ( 1 === $failed ) {
-			$new_ts = (string) ( $response['ts'] ?? '' );
-
-			if ( '' !== $new_ts ) {
-				$this->persistStateSafely(
-					[
-						'longPollTs' => $new_ts,
-						'lastSyncAt' => gmdate( 'c' ),
-						'lastStatus' => self::STATUS_ONLINE,
-					]
-				);
-			}
-
-			return [
-				'updates' => [],
-				'hasNewChats' => false,
-				'hasNewConnections' => false,
-				'failed' => 1,
-				'ts' => $new_ts,
-			];
-		}
-
-		if ( 2 === $failed || 3 === $failed ) {
-			$this->refreshLongPollBootstrap();
-
-			return [
-				'updates' => [],
-				'hasNewChats' => false,
-				'hasNewConnections' => false,
-				'failed' => $failed,
-				'ts' => $this->getLongPollTs(),
-			];
-		}
-
-		$updates = is_array( $response['updates'] ?? null ) ? $response['updates'] : [];
-		$processed = $this->processLongPollUpdates( $updates );
-		$new_ts = (string) ( $response['ts'] ?? $this->getLongPollTs() );
-
-		$this->persistStateSafely(
-			[
-				'longPollTs' => $new_ts,
-				'lastSyncAt' => gmdate( 'c' ),
-				'lastStatus' => self::STATUS_ONLINE,
-			]
-		);
-
-		return array_merge(
-			$processed,
-			[
-				'failed' => 0,
-				'ts' => $new_ts,
-				'updatesCount' => count( $updates ),
-			]
-		);
 	}
 
 	/**
@@ -665,6 +686,30 @@ class Bot extends Entity implements wpPostAble {
 		);
 	}
 
+	private function getFetchUpdatesLockKey(): string {
+		return sprintf( 'cf7vk_fetch_updates_lock_%d', $this->getPost()->ID );
+	}
+
+	private function acquireFetchUpdatesLock( int $ttl = 60 ): bool {
+		$lock_key = $this->getFetchUpdatesLockKey();
+		$locked_at = (int) get_option( $lock_key, 0 );
+		$now = time();
+
+		if ( $locked_at && ( $now - $locked_at ) < $ttl ) {
+			return false;
+		}
+
+		if ( $locked_at ) {
+			delete_option( $lock_key );
+		}
+
+		return add_option( $lock_key, $now, '', false );
+	}
+
+	private function releaseFetchUpdatesLock(): void {
+		delete_option( $this->getFetchUpdatesLockKey() );
+	}
+
 	/**
 	 * @throws TransportNotConfigured
 	 * @throws VkApiException
@@ -685,7 +730,31 @@ class Bot extends Entity implements wpPostAble {
 				continue;
 			}
 
-			$processed = $this->handleIncomingMessage( (array) ( $update['object'] ?? [] ) );
+			try {
+				$processed = $this->handleIncomingMessage( (array) ( $update['object'] ?? [] ) );
+			} catch ( Throwable $e ) {
+				$message = isset( $update['object']['message'] ) && is_array( $update['object']['message'] )
+					? $update['object']['message']
+					: [];
+
+				$this->logger->write(
+					[
+						'botTitle' => $this->getTitle(),
+						'wpPostID' => $this->getPost()->ID,
+						'groupId' => $this->getGroupId(),
+						'eventType' => (string) ( $update['type'] ?? '' ),
+						'eventId' => (string) ( $update['event_id'] ?? '' ),
+						'peerId' => (string) ( $message['peer_id'] ?? '' ),
+						'messageId' => (string) ( $message['id'] ?? '' ),
+						'conversationMessageId' => (string) ( $message['conversation_message_id'] ?? '' ),
+						'error' => $e->getMessage(),
+					],
+					'VK Long Poll update processing failed.',
+					Logger::LEVEL_WARNING
+				);
+
+				continue;
+			}
 
 			if ( empty( $processed ) ) {
 				continue;
