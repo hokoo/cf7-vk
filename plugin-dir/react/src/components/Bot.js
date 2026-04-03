@@ -3,6 +3,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import BotView from './BotView';
 import {
+    apiActivateBotChat,
     apiDeleteBot,
     apiDisconnectBotFromChat,
     apiFetchUpdates,
@@ -86,7 +87,8 @@ const Bot = ({
     onBotRemoved,
     refreshBots,
     refreshBotRuntime,
-    refreshBotChatConnections
+    refreshBotChatConnections,
+    refreshChatChannelConnections
 }) => {
     const persistedGroupId = bot.groupId || '';
     const persistedAccessToken = getEditableAccessToken(bot);
@@ -492,8 +494,16 @@ const Bot = ({
         setSaving(true);
 
         try {
-            await apiSetBotChatStatus(relation.data.id, nextStatus);
-            await refreshBotChatConnections();
+            if ('active' === nextStatus) {
+                await apiActivateBotChat(bot.id, chatId);
+                await Promise.all([
+                    refreshBotChatConnections(),
+                    refreshChatChannelConnections()
+                ]);
+            } else {
+                await apiSetBotChatStatus(relation.data.id, nextStatus);
+                await refreshBotChatConnections();
+            }
         } finally {
             setSaving(false);
         }
@@ -509,8 +519,11 @@ const Bot = ({
         setSaving(true);
 
         try {
-            await apiSetBotChatStatus(relation.data.id, 'active');
-            await refreshBotChatConnections();
+            await apiActivateBotChat(bot.id, chatId);
+            await Promise.all([
+                refreshBotChatConnections(),
+                refreshChatChannelConnections()
+            ]);
         } finally {
             setSaving(false);
         }
@@ -527,7 +540,10 @@ const Bot = ({
 
         try {
             await apiDisconnectBotFromChat(relation.data.id);
-            await refreshBotChatConnections();
+            await Promise.all([
+                refreshBotChatConnections(),
+                refreshChatChannelConnections()
+            ]);
         } finally {
             setSaving(false);
         }

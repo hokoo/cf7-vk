@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 use iTRON\cf7Vk\Exceptions\TransportNotConfigured;
 use iTRON\cf7Vk\Exceptions\VkApiException;
 use iTRON\wpConnections\Connection;
+use iTRON\wpConnections\Exceptions\ConnectionNotFound;
 use iTRON\wpConnections\Exceptions\ConnectionWrongData;
 use iTRON\wpConnections\Exceptions\Exception as ConnectionException;
 use iTRON\wpConnections\Exceptions\MissingParameters;
@@ -303,6 +304,54 @@ class Bot extends Entity implements wpPostAble {
 	 */
 	public function hasChat( Chat $chat ): bool {
 		return $this->getChats()->contains( $chat );
+	}
+
+	/**
+	 * @throws ConnectionNotFound
+	 * @throws ConnectionWrongData
+	 * @throws MissingParameters
+	 * @throws RelationNotFound
+	 */
+	public function activateChat( Chat $chat ): array {
+		if ( ! $this->hasChat( $chat ) ) {
+			throw new ConnectionNotFound();
+		}
+
+		$connected_channel_ids = [];
+
+		foreach ( $this->getChannels() as $channel ) {
+			/** @var Channel $channel */
+			try {
+				if ( $channel->hasChat( $chat ) ) {
+					continue;
+				}
+
+				$channel->connectChat( $chat );
+				$connected_channel_ids[] = $channel->getPost()->ID;
+			} catch ( Throwable $e ) {
+				$this->logger->write(
+					[
+						'botTitle' => $this->getTitle(),
+						'wpPostID' => $this->getPost()->ID,
+						'chatId' => $chat->getPost()->ID,
+						'chatPeerId' => $chat->getPeerId(),
+						'channelId' => $channel->getPost()->ID ?? null,
+						'channelTitle' => $channel->getTitle() ?? '',
+						'error' => $e->getMessage(),
+					],
+					'VK bot chat activation failed to connect the chat to a channel.',
+					Logger::LEVEL_WARNING
+				);
+			}
+		}
+
+		$chat->setActivated( $this );
+
+		return [
+			'chatId' => $chat->getPost()->ID,
+			'status' => $chat->getConnectionStatus( $this ),
+			'connectedChannelIds' => $connected_channel_ids,
+		];
 	}
 
 	/**

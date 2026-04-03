@@ -132,6 +132,11 @@ export const apiFetchUpdates = async (botId) => apiRequest(
     `${cf7VkData.routes.bots}${botId}/fetch_updates`
 );
 
+export const apiActivateBotChat = async (botId, chatId) => apiRequest(
+    `${cf7VkData.routes.bots}${botId}/chats/${chatId}/activate`,
+    'POST'
+);
+
 export const apiCreateChannel = async (title) => apiRequest(
     cf7VkData.routes.channels,
     'POST',

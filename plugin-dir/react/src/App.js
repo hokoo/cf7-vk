@@ -197,6 +197,7 @@ const App = () => {
                                     refreshBots={refreshBots}
                                     refreshBotRuntime={refreshBotRuntime}
                                     refreshBotChatConnections={refreshBotChatConnections}
+                                    refreshChatChannelConnections={refreshChatChannelConnections}
                                 />
                             ))}
                         </div>

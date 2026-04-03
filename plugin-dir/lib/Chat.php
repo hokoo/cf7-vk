@@ -263,7 +263,14 @@ class Chat extends Entity implements wpPostAble {
 	private function setBotConnectionStatus( Bot $bot, string $status ): self {
 		$connection = $this->getBotConnection( $bot );
 
-		$connection->meta->where( 'key', self::STATUS_KEY )->clear();
+		$filtered_meta = $connection->meta->filter(
+			static function ( Meta $meta ): bool {
+				return self::STATUS_KEY !== $meta->getKey();
+			}
+		);
+
+		$connection->meta->clear();
+		$connection->meta->fromArray( $filtered_meta->toArray() );
 		$connection->meta->add( new Meta( self::STATUS_KEY, $status ) );
 		$connection->update();
 
@@ -276,9 +283,10 @@ class Chat extends Entity implements wpPostAble {
 	 */
 	public function getConnectionStatus( Bot $bot ): string {
 		$connection = $this->getBotConnection( $bot );
-		$meta = $connection->meta->where( 'key', self::STATUS_KEY )->first();
+		$status_values = (array) ( $connection->meta->toArray()[ self::STATUS_KEY ] ?? [] );
+		$latest_status = end( $status_values );
 
-		return $meta ? (string) $meta->value : self::STATUS_PENDING;
+		return $latest_status ? (string) $latest_status : self::STATUS_PENDING;
 	}
 
 	/**
