@@ -1,6 +1,6 @@
 /* global cf7VkData */
 
-const apiRequest = async (url, method = 'GET', body = null) => {
+const buildRequest = (url, method = 'GET', body = null) => {
     const query = {
         method,
         headers: {
@@ -23,8 +23,10 @@ const apiRequest = async (url, method = 'GET', body = null) => {
         query.body = JSON.stringify(body);
     }
 
-    const response = await fetch(targetUrl, query);
+    return {targetUrl, query};
+};
 
+const parseResponse = async (response) => {
     if (!response.ok) {
         let message = `Request failed with status ${response.status}`;
         let errorData = null;
@@ -50,9 +52,47 @@ const apiRequest = async (url, method = 'GET', body = null) => {
     return response.json();
 };
 
-export const fetchBots = async () => apiRequest(cf7VkData.routes.bots, 'GET', {orderby: 'id', order: 'asc'});
-export const fetchChannels = async () => apiRequest(cf7VkData.routes.channels, 'GET', {orderby: 'id', order: 'asc'});
-export const fetchChats = async () => apiRequest(cf7VkData.routes.chats, 'GET', {orderby: 'id', order: 'asc'});
+const apiRequest = async (url, method = 'GET', body = null) => {
+    const {targetUrl, query} = buildRequest(url, method, body);
+    const response = await fetch(targetUrl, query);
+
+    return parseResponse(response);
+};
+
+const apiCollectionRequest = async (url, params = {}) => {
+    const items = [];
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+        const {targetUrl, query} = buildRequest(
+            url,
+            'GET',
+            {
+                ...params,
+                per_page: 100,
+                page
+            }
+        );
+        const response = await fetch(targetUrl, query);
+        const pageItems = await parseResponse(response);
+        const nextTotalPages = Number.parseInt(response.headers.get('X-WP-TotalPages') || '1', 10);
+
+        items.push(...(Array.isArray(pageItems) ? pageItems : []));
+
+        if (Number.isFinite(nextTotalPages) && nextTotalPages > 0) {
+            totalPages = nextTotalPages;
+        }
+
+        page += 1;
+    } while (page <= totalPages);
+
+    return items;
+};
+
+export const fetchBots = async () => apiCollectionRequest(cf7VkData.routes.bots, {orderby: 'id', order: 'asc'});
+export const fetchChannels = async () => apiCollectionRequest(cf7VkData.routes.channels, {orderby: 'id', order: 'asc'});
+export const fetchChats = async () => apiCollectionRequest(cf7VkData.routes.chats, {orderby: 'id', order: 'asc'});
 export const fetchForms = async () => apiRequest(cf7VkData.routes.forms);
 export const fetchBotsForChannels = async () => apiRequest(cf7VkData.routes.relations.bot2channel);
 export const fetchBotsForChats = async () => apiRequest(cf7VkData.routes.relations.bot2chat);
