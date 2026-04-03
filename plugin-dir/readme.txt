@@ -1,4 +1,4 @@
-=== Contact Form 7 VK Adapter ===
+=== VK Notifications for Contact Form 7 ===
 Contributors: hokku, igortron
 Tags: contact form 7,vk,vkontakte
 Requires at least: 6.0
@@ -8,11 +8,11 @@ Stable tag: 0.1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Development build of a VK transport adapter for Contact Form 7.
+Development build of VK notifications for Contact Form 7.
 
 == Description ==
 
-This plugin is under active development. The current milestone establishes the routing shell, VK transport backend, and manual dialog onboarding flow for a VK-based Contact Form 7 adapter:
+This plugin is under active development. The current milestone establishes the routing shell, VK transport backend, and manual dialog onboarding flow for VK notifications for Contact Form 7:
 
 1. Create VK bot/community records in the plugin UI.
 2. Verify VK credentials and fetch Long Poll bootstrap data from the admin screen.

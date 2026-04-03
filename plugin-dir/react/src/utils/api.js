@@ -98,8 +98,6 @@ export const fetchBotsForChannels = async () => apiRequest(cf7VkData.routes.rela
 export const fetchBotsForChats = async () => apiRequest(cf7VkData.routes.relations.bot2chat);
 export const fetchChatsForChannels = async () => apiRequest(cf7VkData.routes.relations.chat2channel);
 export const fetchFormsForChannels = async () => apiRequest(cf7VkData.routes.relations.form2channel);
-export const apiFetchSettings = async () => apiRequest(cf7VkData.routes.settings);
-export const apiSaveSettings = async (settings) => apiRequest(cf7VkData.routes.settings, 'POST', settings);
 
 export const apiCreateBot = async ({title, groupId, accessToken, authCommand}) => apiRequest(
     cf7VkData.routes.bots,

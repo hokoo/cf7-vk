@@ -1,6 +1,6 @@
 <?php
 /*
-* Plugin Name: Contact Form 7 VK Adapter
+ * Plugin Name: VK Notifications for Contact Form 7
 * Description: Routes Contact Form 7 submissions through configurable VK delivery channels.
 * Author: Hokku
 * Version: 0.1.0
@@ -27,21 +27,19 @@ const CF7VK_FILE = __FILE__;
 
 require __DIR__ . '/vendor/autoload.php';
 
-add_action( 'plugins_loaded', 'cf7vk_load_textdomain' );
 add_action( 'init', [ Client::getInstance(), 'init' ], 15 );
 CPT::get_instance()->init();
 Settings::init();
 Migration::init();
 
-add_action( 'in_plugin_update_message-' . CF7VK_PLUGIN_NAME, 'cf7vk_plugin_update_message', 10, 2 );
+$cf7vk_distribution_bootstrap = __DIR__ . '/lib/Distribution/GitHubReleaseChannel.php';
 
-function cf7vk_load_textdomain(): void {
-	load_plugin_textdomain(
-		'cf7-vk',
-		false,
-		dirname( CF7VK_PLUGIN_NAME ) . '/languages'
-	);
+if ( is_readable( $cf7vk_distribution_bootstrap ) ) {
+	require_once $cf7vk_distribution_bootstrap;
+	\iTRON\cf7Vk\Distribution\GitHubReleaseChannel::init();
 }
+
+add_action( 'in_plugin_update_message-' . CF7VK_PLUGIN_NAME, 'cf7vk_plugin_update_message', 10, 2 );
 
 function cf7vk_plugin_update_message( $data, $response ): void {
 	if ( ! isset( $data['upgrade_notice'] ) ) {

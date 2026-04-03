@@ -7,13 +7,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use iTRON\cf7Vk\Controllers\CPT;
-use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 class Settings {
-	public const OPTION_PREFIX = 'cf7vk_';
-	public const EARLY_FLAG_OPTION = self::OPTION_PREFIX . 'early_access';
 	public const PAGE_SLUG = 'wpcf7_vk';
-	public const SCREEN_ACTION = 'wpcf7_vk_settings';
 
 	public static function init(): void {
 		add_action(
@@ -31,18 +27,6 @@ class Settings {
 		);
 		add_action( 'current_screen', [ self::class, 'initScreen' ], 999 );
 		add_action( 'admin_enqueue_scripts', [ self::class, 'admin_enqueue_scripts' ] );
-
-		if ( self::getEarlyFlag() ) {
-			self::initPreReleases();
-		}
-	}
-
-	public static function getEarlyFlag(): bool {
-		return filter_var( get_option( self::EARLY_FLAG_OPTION, false ), FILTER_VALIDATE_BOOLEAN );
-	}
-
-	public static function setEarlyFlag( $value ): void {
-		update_option( self::EARLY_FLAG_OPTION, $value, false );
 	}
 
 	public static function getCaps(): string {
@@ -50,10 +34,9 @@ class Settings {
 	}
 
 	public static function renderPage(): void {
-		printf(
-			'<div id="cf7-vk-container"><div class="wrap">%s</div></div>',
-			self::getSettingsContent()
-		);
+		echo '<div id="cf7-vk-container"><div class="wrap">';
+		echo wp_kses_post( self::getSettingsContent() );
+		echo '</div></div>';
 	}
 
 	public static function initScreen(): void {
@@ -63,11 +46,11 @@ class Settings {
 			return;
 		}
 
-		do_action( self::SCREEN_ACTION );
+		do_action( 'cf7vk_settings_screen' );
 	}
 
 	public static function admin_enqueue_scripts(): void {
-		if ( ! did_action( self::SCREEN_ACTION ) ) {
+		if ( ! did_action( 'cf7vk_settings_screen' ) ) {
 			return;
 		}
 
@@ -132,30 +115,11 @@ class Settings {
 				'bots' => get_rest_url( null, 'wp/v2/' . Client::CPT_BOT . '/' ),
 				'chats' => get_rest_url( null, 'wp/v2/' . Client::CPT_CHAT . '/' ),
 				'forms' => get_rest_url( null, 'contact-form-7/v1/contact-forms/' ),
-				'settings' => get_rest_url( null, 'wp/v2/settings/' ),
-			],
-			'options' => [
-				'early_access' => self::EARLY_FLAG_OPTION,
 			],
 			'nonce' => wp_create_nonce( 'wp_rest' ),
 			'phrases' => [
 				'emptySecret' => Bot::getEmptySecret(),
 			],
 		];
-	}
-
-	private static function initPreReleases(): void {
-		$update_checker = PucFactory::buildUpdateChecker(
-			'https://github.com/hokoo/cf7-vk',
-			CF7VK_FILE,
-			'cf7-vk',
-			1
-		);
-
-		if ( defined( 'CF7VK_GITHUB_TOKEN' ) ) {
-			$update_checker->setAuthentication( CF7VK_GITHUB_TOKEN );
-		}
-
-		$update_checker->setBranch( 'plugin-dist' );
 	}
 }

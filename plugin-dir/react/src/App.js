@@ -1,7 +1,6 @@
 /* global wp */
 
 import React, {useEffect, useState} from 'react';
-import Settings from './components/Settings';
 import Channel from './components/Channel';
 import Bot from './components/Bot';
 import NewBot from './components/NewBot';
@@ -174,10 +173,6 @@ const App = () => {
         <>
             <h1>{wp.i18n.__( 'VK notificator settings', 'cf7-vk' )}</h1>
             <div className="cf7-tg-container" id="cf7-vk-container">
-                <div className="settings-container">
-                    <Settings />
-                </div>
-
                 <div className="main-container">
                     <div className="list-container bots-container">
                         <div className="title-container">

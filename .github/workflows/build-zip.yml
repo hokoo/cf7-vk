@@ -24,47 +24,15 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install and build React app
-        working-directory: ./plugin-dir/react
+      - name: Build plugin package
         run: |
-          npm ci
-          CI=false npm run build
-
-      - name: Clean up react directory
-        run: |
-          echo "Removing node_modules..."
-          rm -rf ./plugin-dir/react/node_modules
-
-          if [ "${{ github.event.release.prerelease }}" != "true" ]; then
-            echo "Production release: removing everything except build/"
-            find ./plugin-dir/react -mindepth 1 -maxdepth 1 -not -name 'build' -exec rm -rf {} +
-          else
-            echo "Pre-release: keeping files except node_modules."
-          fi
-
-      - name: Install Composer dependencies
-        working-directory: ./plugin-dir
-        run: |
-          composer install --no-dev --optimize-autoloader
-        env:
-          COMPOSER_ROOT_VERSION: 1.0.0
-
-      - name: Remove all files and directories except plugin directory
-        run: |
-          find . -mindepth 1 -maxdepth 1 -not -name 'plugin-dir' -not -name '.git' -exec rm -rf {} +
-          mv plugin-dir cf7-vk
-
-      - name: Remove hidden files from plugin directory and subdirectories
-        run: |
-          find cf7-vk -type f -name ".*" -exec rm -f {} +
-
-      - name: Zip the plugin directory
-        run: zip -r cf7-vk-wp-plugin.zip cf7-vk
+          BUILD_MODE=$([ "${{ github.event.release.prerelease }}" = "true" ] && echo "prerelease" || echo "stable")
+          ./install/build-plugin-package.sh "${BUILD_MODE}" "${GITHUB_WORKSPACE}/build-artifacts"
 
       - name: Upload Release Artifact
         uses: AButler/upload-release-assets@v3.0
         with:
-          files: ./cf7-vk-wp-plugin.zip
+          files: ./build-artifacts/cf7-vk-wp-plugin.zip
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set target branch
@@ -77,7 +45,7 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           export TEMP_DIR=$(mktemp -d)
-          cp -r cf7-vk/* "$TEMP_DIR/"
+          cp -r build-artifacts/cf7-vk/* "$TEMP_DIR/"
 
           git fetch origin ${{ steps.branch.outputs.branch_name }} || true
           git worktree add --force dist-worktree origin/${{ steps.branch.outputs.branch_name }}
@@ -104,6 +72,6 @@ jobs:
         env:
           SVN_USERNAME: ${{ secrets.WPORG_USERNAME }}
           SVN_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
-          BUILD_DIR: ./cf7-vk
+          BUILD_DIR: ./build-artifacts/cf7-vk
           SLUG: cf7-vk
           VERSION: ${{ steps.clean_version.outputs.value }}

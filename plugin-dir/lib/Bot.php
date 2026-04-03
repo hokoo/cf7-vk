@@ -627,7 +627,7 @@ class Bot extends Entity implements wpPostAble {
 			$access_token = $this->getAccessToken();
 
 			if ( empty( $access_token ) || $this->isAccessTokenEmpty() ) {
-				throw new TransportNotConfigured( __( 'VK access token is not configured.', 'cf7-vk' ) );
+				throw TransportNotConfigured::missingAccessToken();
 			}
 
 			$this->api = new VkApi( $access_token, $this->getApiVersion() );
@@ -643,11 +643,11 @@ class Bot extends Entity implements wpPostAble {
 		$group_id = trim( $this->getGroupId() );
 
 		if ( '' === $group_id ) {
-			throw new TransportNotConfigured( __( 'VK group ID is not configured.', 'cf7-vk' ) );
+			throw TransportNotConfigured::missingGroupId();
 		}
 
 		if ( 1 !== preg_match( '/^-?\d+$/', $group_id ) ) {
-			throw new TransportNotConfigured( __( 'VK group ID must be a numeric value.', 'cf7-vk' ) );
+			throw TransportNotConfigured::invalidGroupId();
 		}
 
 		return ltrim( $group_id, '-' );

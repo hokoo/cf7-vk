@@ -31,40 +31,6 @@ ul#adminmenu > li.current > a.current:after {
     flex-direction: row;
   }
 
-  .settings-container {
-    @media (min-width: 1440px) {
-      order: 1;
-      flex: 1;
-    }
-
-    .early-access {
-      transition: all 0.05s ease 0.4s;
-      cursor: pointer;
-      color: #656565;
-
-      &.checked {
-        color: #ccc;
-      }
-
-      &[disabled] {
-        opacity: 0.2;
-        pointer-events: none;
-        transition: none;
-      }
-
-      &:not(.checked) {
-        input {
-          background-color: #ccc;
-        }
-      }
-
-      small {
-        margin-top: 4px;
-        display: block;
-      }
-    }
-  }
-
   .main-container {
     display: flex;
     flex-direction: column;

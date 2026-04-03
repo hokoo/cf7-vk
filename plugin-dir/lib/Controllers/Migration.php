@@ -20,7 +20,8 @@ class Migration {
 	protected function __clone() {}
 
 	public function __wakeup() {
-		trigger_error(
+		wp_trigger_error(
+			__METHOD__,
 			'Deserializing of iTRON\cf7Vk\Controllers\Migration instance is prohibited.',
 			E_USER_NOTICE
 		);

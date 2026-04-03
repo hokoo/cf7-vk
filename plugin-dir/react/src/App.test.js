@@ -1,7 +1,6 @@
 import {render, screen} from '@testing-library/react';
 import App from './App';
 
-jest.mock('./components/Settings', () => () => <div>Settings component</div>);
 jest.mock('./components/NewBot', () => () => <div>New bot component</div>);
 jest.mock('./components/NewChannel', () => () => <div>New channel component</div>);
 jest.mock('./components/Bot', () => () => <div>Bot component</div>);

@@ -21,7 +21,7 @@ class VkApi {
 		$access_token = trim( $access_token );
 
 		if ( '' === $access_token ) {
-			throw new TransportNotConfigured( __( 'VK access token is not configured.', 'cf7-vk' ) );
+			throw TransportNotConfigured::missingAccessToken();
 		}
 
 		$this->accessToken = $access_token;
@@ -92,22 +92,23 @@ class VkApi {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			throw new VkApiException( $response->get_error_message() );
+			$exception = VkApiException::fromWpError( $response );
+			throw $exception;
 		}
 
 		$status_code = (int) wp_remote_retrieve_response_code( $response );
 		$decoded = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( $status_code >= 400 ) {
-			throw new VkApiException(
-				sprintf( 'VK Long Poll request failed with HTTP status %d.', $status_code ),
+			$exception = VkApiException::longPollRequestFailed(
 				$status_code,
 				is_array( $decoded ) ? $decoded : []
 			);
+			throw $exception;
 		}
 
 		if ( ! is_array( $decoded ) ) {
-			throw new VkApiException( __( 'VK Long Poll returned an invalid JSON response.', 'cf7-vk' ) );
+			throw VkApiException::invalidLongPollJson();
 		}
 
 		return $decoded;
@@ -161,7 +162,7 @@ class VkApi {
 		$peer_id = trim( $peer_id );
 
 		if ( '' === $peer_id ) {
-			throw new TransportNotConfigured( __( 'VK peer ID is not configured.', 'cf7-vk' ) );
+			throw TransportNotConfigured::missingPeerId();
 		}
 
 		$response = $this->call(
@@ -206,7 +207,8 @@ class VkApi {
 		);
 
 		if ( is_wp_error( $response ) ) {
-			throw new VkApiException( $response->get_error_message() );
+			$exception = VkApiException::fromWpError( $response );
+			throw $exception;
 		}
 
 		$status_code = (int) wp_remote_retrieve_response_code( $response );
@@ -214,29 +216,27 @@ class VkApi {
 		$decoded = json_decode( $body, true );
 
 		if ( $status_code >= 400 ) {
-			throw new VkApiException(
-				sprintf( 'VK API request failed with HTTP status %d.', $status_code ),
+			$exception = VkApiException::apiRequestFailed(
 				$status_code,
 				is_array( $decoded ) ? $decoded : []
 			);
+			throw $exception;
 		}
 
 		if ( ! is_array( $decoded ) ) {
-			throw new VkApiException( __( 'VK API returned an invalid JSON response.', 'cf7-vk' ) );
+			throw VkApiException::invalidApiJson();
 		}
 
 		if ( isset( $decoded['error'] ) ) {
 			$error = (array) $decoded['error'];
 
-			throw new VkApiException(
-				(string) ( $error['error_msg'] ?? __( 'VK API returned an error.', 'cf7-vk' ) ),
-				(int) ( $error['error_code'] ?? 0 ),
-				$error
-			);
+			$exception = VkApiException::fromApiError( $error );
+			throw $exception;
 		}
 
 		if ( ! array_key_exists( 'response', $decoded ) ) {
-			throw new VkApiException( __( 'VK API response payload is missing.', 'cf7-vk' ), 0, $decoded );
+			$exception = VkApiException::missingResponsePayload( $decoded );
+			throw $exception;
 		}
 
 		return $decoded['response'];

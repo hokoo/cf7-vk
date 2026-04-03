@@ -9,7 +9,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 use iTRON\cf7Vk\Bot;
 use iTRON\cf7Vk\Chat;
 use iTRON\cf7Vk\Client;
-use iTRON\cf7Vk\Settings;
 use iTRON\wpPostAble\Exceptions\wppaSavePostException;
 
 class RestApi {
@@ -18,19 +17,6 @@ class RestApi {
 	}
 
 	public static function registerFields(): void {
-		register_setting(
-			'options',
-			Settings::EARLY_FLAG_OPTION,
-			[
-				'type' => 'boolean',
-				'show_in_rest' => true,
-				'default' => false,
-				'auth_callback' => static function (): bool {
-					return current_user_can( Settings::getCaps() );
-				},
-			]
-		);
-
 		self::registerBotFields();
 		self::registerChatFields();
 	}

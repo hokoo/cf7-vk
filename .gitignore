@@ -8,6 +8,7 @@
 /.env
 *.sql
 *.tgz
+/build/
 
 # logs
 /install/nginx/*
@@ -17,3 +18,18 @@
 /.idea/
 /betas-content/
 /dev-content/
+
+# plugin react workspace
+/plugin-dir/react/node_modules/
+/plugin-dir/react/.pnp
+/plugin-dir/react/.pnp.js
+/plugin-dir/react/coverage/
+/plugin-dir/react/build/
+/plugin-dir/react/.DS_Store
+/plugin-dir/react/.env.local
+/plugin-dir/react/.env.development.local
+/plugin-dir/react/.env.test.local
+/plugin-dir/react/.env.production.local
+/plugin-dir/react/npm-debug.log*
+/plugin-dir/react/yarn-debug.log*
+/plugin-dir/react/yarn-error.log*
