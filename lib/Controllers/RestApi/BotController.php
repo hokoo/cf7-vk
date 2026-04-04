@@ -176,7 +176,7 @@ class BotController extends Controller {
 		} catch ( ConnectionNotFound $exception ) {
 			return new WP_Error(
 				'rest_vk_bot_chat_not_found',
-				__( 'VK chat is not linked to this bot.', 'cf7-vk' ),
+				__( 'VK chat is not linked to this bot.', 'vk-notifications-for-contact-form-7' ),
 				[ 'status' => 404 ]
 			);
 		} catch ( ConnectionWrongData | MissingParameters | RelationNotFound $exception ) {
