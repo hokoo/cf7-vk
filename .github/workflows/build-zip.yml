@@ -5,6 +5,9 @@ on:
     types:
       - published
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -45,20 +48,30 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           export TEMP_DIR=$(mktemp -d)
-          cp -r build-artifacts/cf7-vk/* "$TEMP_DIR/"
+          export DIST_WORKTREE=$(mktemp -d)
+          export TARGET_BRANCH=${{ steps.branch.outputs.branch_name }}
 
-          git fetch origin ${{ steps.branch.outputs.branch_name }} || true
-          git worktree add --force dist-worktree origin/${{ steps.branch.outputs.branch_name }}
+          cp -r build-artifacts/cf7-vk/. "$TEMP_DIR/"
 
-          rm -rf dist-worktree/*
-          cp -r "$TEMP_DIR/"* dist-worktree/
+          if git ls-remote --exit-code --heads origin "$TARGET_BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$TARGET_BRANCH"
+            git worktree add --force "$DIST_WORKTREE" "origin/$TARGET_BRANCH"
+            cd "$DIST_WORKTREE"
+          else
+            git worktree add --detach "$DIST_WORKTREE"
+            cd "$DIST_WORKTREE"
+            git checkout --orphan "$TARGET_BRANCH"
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
 
-          cd dist-worktree
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cp -r "$TEMP_DIR"/. .
+
           git add -f vendor
           git add -f react/build
           git add .
           git commit -m "Update plugin build from release ${{ github.event.release.tag_name }}" || echo "No changes to commit"
-          git push origin HEAD:${{ steps.branch.outputs.branch_name }}
+          git push origin HEAD:"$TARGET_BRANCH"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
