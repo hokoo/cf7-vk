@@ -6,7 +6,7 @@
 * Version: 0.1.0
 * License: GPL v2 or later
 * License URI: https://www.gnu.org/licenses/gpl-2.0.html
-* Text Domain: cf7-vk
+* Text Domain: vk-notifications-for-contact-form-7
 * Domain Path: /languages
 * Requires Plugins: contact-form-7
 */

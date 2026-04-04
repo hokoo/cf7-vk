@@ -24,7 +24,7 @@ const getStatusClass = (status) => {
     return 'unknown';
 };
 
-const getEmptySecret = () => cf7VkData?.phrases?.emptySecret || wp.i18n.__( '[empty]', 'cf7-vk' );
+const getEmptySecret = () => cf7VkData?.phrases?.emptySecret || wp.i18n.__( '[empty]', 'vk-notifications-for-contact-form-7' );
 
 const getEditableAccessToken = (bot) => {
     if (bot.isAccessTokenDefinedByConst || bot.isAccessTokenEmpty || bot.accessToken === getEmptySecret()) {
@@ -455,7 +455,7 @@ const Bot = ({
     };
 
     const remove = async () => {
-        if (!window.confirm(wp.i18n.__( 'Remove this bot connection?', 'cf7-vk' ))) {
+        if (!window.confirm(wp.i18n.__( 'Remove this bot connection?', 'vk-notifications-for-contact-form-7' ))) {
             return;
         }
 

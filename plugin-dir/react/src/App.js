@@ -166,17 +166,17 @@ const App = () => {
     }, []);
 
     if (loading) {
-        return <div>{wp.i18n.__( 'Loading data...', 'cf7-vk' )}</div>;
+        return <div>{wp.i18n.__( 'Loading data...', 'vk-notifications-for-contact-form-7' )}</div>;
     }
 
     return (
         <>
-            <h1>{wp.i18n.__( 'VK notificator settings', 'cf7-vk' )}</h1>
+            <h1>{wp.i18n.__( 'VK notificator settings', 'vk-notifications-for-contact-form-7' )}</h1>
             <div className="cf7-tg-container" id="cf7-vk-container">
                 <div className="main-container">
                     <div className="list-container bots-container">
                         <div className="title-container">
-                            <h3 className="title">{wp.i18n.__( 'VK bots', 'cf7-vk' )}</h3>
+                            <h3 className="title">{wp.i18n.__( 'VK bots', 'vk-notifications-for-contact-form-7' )}</h3>
                             <NewBot onCreated={handleBotCreated} />
                         </div>
 
@@ -200,7 +200,7 @@ const App = () => {
 
                     <div className="list-container channels-container">
                         <div className="title-container">
-                            <h3 className="title">{wp.i18n.__( 'Channels', 'cf7-vk' )}</h3>
+                            <h3 className="title">{wp.i18n.__( 'Channels', 'vk-notifications-for-contact-form-7' )}</h3>
                             <NewChannel onCreated={handleChannelCreated} />
                         </div>
 
@@ -229,7 +229,7 @@ const App = () => {
             </div>
 
             <style>
-                {`.copyable::after { content: '` + wp.i18n.__( 'Copied!', 'cf7-vk' ) + `' !important }`}
+                {`.copyable::after { content: '` + wp.i18n.__( 'Copied!', 'vk-notifications-for-contact-form-7' ) + `' !important }`}
             </style>
         </>
     );

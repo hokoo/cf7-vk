@@ -27,10 +27,10 @@ const BotView = ({
     commitInlineEdit,
     handleInlineEditorKeyDown
 }) => {
-    const botTitle = bot.title?.rendered || wp.i18n.__( 'Untitled bot', 'cf7-vk' );
+    const botTitle = bot.title?.rendered || wp.i18n.__( 'Untitled bot', 'vk-notifications-for-contact-form-7' );
     const visibleBotTitle = formatBotTitle(botTitle);
     const authCommand = form.authCommand.trim() || 'start';
-    const emptySecret = cf7VkData?.phrases?.emptySecret || wp.i18n.__( '[empty]', 'cf7-vk' );
+    const emptySecret = cf7VkData?.phrases?.emptySecret || wp.i18n.__( '[empty]', 'vk-notifications-for-contact-form-7' );
     const hasTokenValue = Boolean(form.accessToken.trim()) && form.accessToken !== emptySecret;
     const tokenDisplay = bot.isAccessTokenDefinedByConst
         ? bot.accessTokenConst
@@ -54,16 +54,16 @@ const BotView = ({
                                             onClick={startEditingCommand}
                                             disabled={saving}
                                         >
-                                            {wp.i18n.__( 'Edit', 'cf7-vk' )}
+                                            {wp.i18n.__( 'Edit', 'vk-notifications-for-contact-form-7' )}
                                         </button>
                                         <button
                                             className="command-action right copyable"
                                             type="button"
                                             onClick={(event) => copyWithTooltip(event.currentTarget, authCommand)}
-                                            title={wp.i18n.__( 'Copy authorization command', 'cf7-vk' )}
+                                            title={wp.i18n.__( 'Copy authorization command', 'vk-notifications-for-contact-form-7' )}
                                             disabled={saving}
                                         >
-                                            {wp.i18n.__( 'Copy', 'cf7-vk' )}
+                                            {wp.i18n.__( 'Copy', 'vk-notifications-for-contact-form-7' )}
                                         </button>
                                     </div>
                                 </>
@@ -88,10 +88,10 @@ const BotView = ({
                             className={`show-token${bot.isAccessTokenDefinedByConst ? ' const' : ''}`}
                             onClick={startEditingToken}
                             title={bot.isAccessTokenDefinedByConst
-                                ? wp.i18n.__( 'Defined by PHP constant', 'cf7-vk' )
-                                : wp.i18n.__( 'Click to edit token', 'cf7-vk' )}
+                                ? wp.i18n.__( 'Defined by PHP constant', 'vk-notifications-for-contact-form-7' )
+                                : wp.i18n.__( 'Click to edit token', 'vk-notifications-for-contact-form-7' )}
                         >
-                            {wp.i18n.__( 'token', 'cf7-vk' )}: <span className={`token-value${hasTokenValue || bot.isAccessTokenDefinedByConst ? '' : ' empty'}`}>{isEditingToken ? '' : tokenDisplay}</span>
+                            {wp.i18n.__( 'token', 'vk-notifications-for-contact-form-7' )}: <span className={`token-value${hasTokenValue || bot.isAccessTokenDefinedByConst ? '' : ' empty'}`}>{isEditingToken ? '' : tokenDisplay}</span>
                         </div>
 
                         {isEditingToken ? (
@@ -119,14 +119,14 @@ const BotView = ({
                 <div className="frame bot-fields">
                     <div className="bot-field-grid">
                         <label className="bot-field">
-                            <span>{wp.i18n.__( 'Group ID', 'cf7-vk' )}</span>
+                            <span>{wp.i18n.__( 'Group ID', 'vk-notifications-for-contact-form-7' )}</span>
                             <input value={form.groupId} onChange={updateField('groupId')} onBlur={handleFieldBlur} disabled={saving} />
                         </label>
                     </div>
                 </div>
 
                 <div className="frame chats-for-bot">
-                    <h5>{wp.i18n.__( 'Linked dialogs', 'cf7-vk' )}</h5>
+                    <h5>{wp.i18n.__( 'Linked dialogs', 'vk-notifications-for-contact-form-7' )}</h5>
 
                     {chatsForBot.length > 0 ? (
                         <ul>
@@ -154,7 +154,7 @@ const BotView = ({
                                             className="action remove-chat"
                                             onClick={() => disconnectChat(chat.id)}
                                         >
-                                            {wp.i18n.__( 'Remove', 'cf7-vk' )}
+                                            {wp.i18n.__( 'Remove', 'vk-notifications-for-contact-form-7' )}
                                         </span>
                                     </li>
                                 );
@@ -162,19 +162,19 @@ const BotView = ({
                         </ul>
                     ) : 'offline' === statusClass ? (
                         <span className="offline-bot-sad-message">
-                            {wp.i18n.__( 'Couldn’t load dialogs from VK right now.', 'cf7-vk' )}
+                            {wp.i18n.__( 'Couldn’t load dialogs from VK right now.', 'vk-notifications-for-contact-form-7' )}
                         </span>
                     ) : !hasConfiguredBot ? (
                         <span className="unknown-bot-status-message">
-                            {wp.i18n.__( 'Fill in group ID and access token to start automatic listening.', 'cf7-vk' )}
+                            {wp.i18n.__( 'Fill in group ID and access token to start automatic listening.', 'vk-notifications-for-contact-form-7' )}
                         </span>
                     ) : 'unknown' === statusClass ? (
                         <span className="unknown-bot-status-message">
-                            {wp.i18n.__( 'Automatic connection check is in progress.', 'cf7-vk' )}
+                            {wp.i18n.__( 'Automatic connection check is in progress.', 'vk-notifications-for-contact-form-7' )}
                         </span>
                     ) : (
                         <span className="no-chats-found">
-                            {wp.i18n.__( 'Waiting for VK dialogs to join through the auth command...', 'cf7-vk' )}
+                            {wp.i18n.__( 'Waiting for VK dialogs to join through the auth command...', 'vk-notifications-for-contact-form-7' )}
                         </span>
                     )}
                 </div>
@@ -182,7 +182,7 @@ const BotView = ({
                 <div className="frame status-bar">
                     <div className="bot-actions">
                         <button className="remove-bot-button" type="button" onClick={remove} disabled={saving}>
-                            {wp.i18n.__( 'Remove bot', 'cf7-vk' )}
+                            {wp.i18n.__( 'Remove bot', 'vk-notifications-for-contact-form-7' )}
                         </button>
                     </div>
                     <div className={`bot-status ${statusClass}`}>{statusClass}</div>

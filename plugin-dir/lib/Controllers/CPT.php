@@ -37,7 +37,7 @@ class CPT {
 		register_post_type(
 			Client::CPT_BOT,
 			[
-				'labels' => [ 'name' => __( 'VK Bots', 'cf7-vk' ) ],
+				'labels' => [ 'name' => __( 'VK Bots', 'vk-notifications-for-contact-form-7' ) ],
 				'public' => false,
 				'show_in_menu' => false,
 				'publicly_queryable' => false,
@@ -52,7 +52,7 @@ class CPT {
 		register_post_type(
 			Client::CPT_CHAT,
 			[
-				'labels' => [ 'name' => __( 'VK Chats', 'cf7-vk' ) ],
+				'labels' => [ 'name' => __( 'VK Chats', 'vk-notifications-for-contact-form-7' ) ],
 				'public' => false,
 				'show_in_menu' => false,
 				'publicly_queryable' => false,
@@ -67,7 +67,7 @@ class CPT {
 		register_post_type(
 			Client::CPT_CHANNEL,
 			[
-				'labels' => [ 'name' => __( 'VK Channels', 'cf7-vk' ) ],
+				'labels' => [ 'name' => __( 'VK Channels', 'vk-notifications-for-contact-form-7' ) ],
 				'public' => false,
 				'show_in_menu' => false,
 				'publicly_queryable' => false,

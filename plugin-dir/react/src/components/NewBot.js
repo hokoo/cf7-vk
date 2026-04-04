@@ -11,7 +11,7 @@ const NewBot = ({onCreated}) => {
 
         try {
             const createdBot = await apiCreateBot({
-                title: wp.i18n.__( 'VK Bot', 'cf7-vk' ),
+                title: wp.i18n.__( 'VK Bot', 'vk-notifications-for-contact-form-7' ),
                 groupId: '',
                 accessToken: '',
                 authCommand: 'start'
@@ -19,7 +19,7 @@ const NewBot = ({onCreated}) => {
             onCreated(createdBot);
         } catch (error) {
             console.error('Error creating bot:', error);
-            alert(wp.i18n.__( 'Failed to create bot', 'cf7-vk' ));
+            alert(wp.i18n.__( 'Failed to create bot', 'vk-notifications-for-contact-form-7' ));
         } finally {
             setSaving(false);
         }
@@ -27,7 +27,7 @@ const NewBot = ({onCreated}) => {
 
     return (
         <button className="add-button add-bot-button" onClick={handleCreateBot} disabled={saving}>
-            {wp.i18n.__( 'Create Bot', 'cf7-vk' )}
+            {wp.i18n.__( 'Create Bot', 'vk-notifications-for-contact-form-7' )}
         </button>
     );
 };
