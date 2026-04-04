@@ -22,7 +22,7 @@ class VkApiException extends Exception {
 		return self::withPayload(
 			sprintf(
 				/* translators: %d: HTTP status code returned by VK Long Poll */
-				esc_html__( 'VK Long Poll request failed with HTTP status %d.', 'cf7-vk' ),
+				esc_html__( 'VK Long Poll request failed with HTTP status %d.', 'vk-notifications-for-contact-form-7' ),
 				$status_code
 			),
 			$status_code,
@@ -31,14 +31,14 @@ class VkApiException extends Exception {
 	}
 
 	public static function invalidLongPollJson(): self {
-		return new self( esc_html__( 'VK Long Poll returned an invalid JSON response.', 'cf7-vk' ) );
+		return new self( esc_html__( 'VK Long Poll returned an invalid JSON response.', 'vk-notifications-for-contact-form-7' ) );
 	}
 
 	public static function apiRequestFailed( int $status_code, array $payload = [] ): self {
 		return self::withPayload(
 			sprintf(
 				/* translators: %d: HTTP status code returned by the VK API */
-				esc_html__( 'VK API request failed with HTTP status %d.', 'cf7-vk' ),
+				esc_html__( 'VK API request failed with HTTP status %d.', 'vk-notifications-for-contact-form-7' ),
 				$status_code
 			),
 			$status_code,
@@ -47,11 +47,11 @@ class VkApiException extends Exception {
 	}
 
 	public static function invalidApiJson(): self {
-		return new self( esc_html__( 'VK API returned an invalid JSON response.', 'cf7-vk' ) );
+		return new self( esc_html__( 'VK API returned an invalid JSON response.', 'vk-notifications-for-contact-form-7' ) );
 	}
 
 	public static function fromApiError( array $error ): self {
-		$message = $error['error_msg'] ?? esc_html__( 'VK API returned an error.', 'cf7-vk' );
+		$message = $error['error_msg'] ?? esc_html__( 'VK API returned an error.', 'vk-notifications-for-contact-form-7' );
 
 		return self::withPayload(
 			esc_html( (string) $message ),
@@ -62,7 +62,7 @@ class VkApiException extends Exception {
 
 	public static function missingResponsePayload( array $payload ): self {
 		return self::withPayload(
-			esc_html__( 'VK API response payload is missing.', 'cf7-vk' ),
+			esc_html__( 'VK API response payload is missing.', 'vk-notifications-for-contact-form-7' ),
 			0,
 			$payload
 		);
