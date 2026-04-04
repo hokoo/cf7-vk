@@ -1,0 +1,38 @@
+{
+  "name": "hokoo/wpcf7_vk_app",
+  "description": "Contact Form 7 VK adapter plugin.",
+  "type": "wordpress-plugin",
+  "minimum-stability": "stable",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Igor Tron",
+      "email": "public@itron.pro"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/hokoo/wpPostAble.git"
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/hokoo/wpConnections.git"
+    }
+  ],
+  "require": {
+    "ramsey/collection": "*",
+    "hokoo/wppostable": "dev-master",
+    "hokoo/wpconnections": "dev-master",
+    "ext-json": "*",
+    "php": ">=8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "iTRON\\cf7Vk\\": "lib"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  }
+}
