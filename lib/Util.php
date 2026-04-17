@@ -102,7 +102,7 @@ class Util {
 		$peer_id = trim( (string) ( $message['peer_id'] ?? '' ) );
 
 		if ( '' === $peer_id ) {
-			throw new InvalidArgumentException( esc_html__( 'VK message peer ID is missing.', 'vk-notifications-for-contact-form-7' ) );
+			throw new InvalidArgumentException( esc_html__( 'VK message peer ID is missing.', 'message-bridge-for-contact-form-7-and-vk' ) );
 		}
 
 		$chat = self::getChatByPeerId( $peer_id ) ?: new Chat();
@@ -171,14 +171,14 @@ class Util {
 		if ( Chat::TYPE_PRIVATE === Chat::detectTypeByPeerId( $peer_id ) ) {
 			return sprintf(
 				/* translators: %s: VK user ID */
-				__( 'VK user %s', 'vk-notifications-for-contact-form-7' ),
+				__( 'VK user %s', 'message-bridge-for-contact-form-7-and-vk' ),
 				$user_id ?: (string) $peer_id
 			);
 		}
 
 		return sprintf(
 			/* translators: %s: VK peer ID */
-			__( 'VK chat %s', 'vk-notifications-for-contact-form-7' ),
+			__( 'VK chat %s', 'message-bridge-for-contact-form-7-and-vk' ),
 			(string) $peer_id
 		);
 	}

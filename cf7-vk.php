@@ -1,15 +1,15 @@
 <?php
 /*
- * Plugin Name: VK Notifications for Contact Form 7
-* Description: Routes Contact Form 7 submissions through configurable VK delivery channels.
-* Author: Hokku
-* Version: 0.1.0
-* License: GPL v2 or later
-* License URI: https://www.gnu.org/licenses/gpl-2.0.html
-* Text Domain: vk-notifications-for-contact-form-7
-* Domain Path: /languages
-* Requires Plugins: contact-form-7
-*/
+ * Plugin Name: Message Bridge for Contact Form 7 and VK
+ * Description: Sends Contact Form 7 submissions to VK dialogs through configurable message bridge channels.
+ * Author: Hokku
+ * Version: 0.1.1
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: message-bridge-for-contact-form-7-and-vk
+ * Domain Path: /languages
+ * Requires Plugins: contact-form-7
+ */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -22,7 +22,7 @@ use iTRON\cf7Vk\Settings;
 
 define( 'CF7VK_PLUGIN_NAME', plugin_basename( __FILE__ ) );
 
-const CF7VK_VERSION = '0.1.0';
+const CF7VK_VERSION = '0.1.1';
 const CF7VK_FILE = __FILE__;
 
 require __DIR__ . '/vendor/autoload.php';

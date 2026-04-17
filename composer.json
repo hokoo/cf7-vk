@@ -1,6 +1,6 @@
 {
   "name": "hokoo/wpcf7_vk_app",
-  "description": "Contact Form 7 VK adapter plugin.",
+  "description": "Message Bridge for Contact Form 7 and VK plugin.",
   "type": "wordpress-plugin",
   "minimum-stability": "stable",
   "license": "MIT",

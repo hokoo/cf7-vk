@@ -17,8 +17,8 @@ class Settings {
 			static function () {
 				add_submenu_page(
 					'wpcf7',
-					__( 'CF7 VK', 'vk-notifications-for-contact-form-7' ),
-					__( 'CF7 VK', 'vk-notifications-for-contact-form-7' ),
+					__( 'Message Bridge for Contact Form 7 and VK', 'message-bridge-for-contact-form-7-and-vk' ),
+					__( 'VK', 'message-bridge-for-contact-form-7-and-vk' ),
 					self::getCaps(),
 					self::PAGE_SLUG,
 					[ self::class, 'renderPage' ]
@@ -74,7 +74,7 @@ class Settings {
 				CF7VK_VERSION,
 				true
 			);
-			wp_set_script_translations( 'cf7-vk-admin', 'vk-notifications-for-contact-form-7' );
+			wp_set_script_translations( 'cf7-vk-admin', 'message-bridge-for-contact-form-7-and-vk' );
 			wp_localize_script( 'cf7-vk-admin', 'cf7VkData', self::getScriptData() );
 		}
 	}

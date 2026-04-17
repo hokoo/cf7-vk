@@ -49,7 +49,7 @@ class Bot extends Entity implements wpPostAble {
 	public static function getEmptySecret(): string {
 		return sprintf(
 			self::EMPTY_SECRET_MASK,
-			_x( 'empty', 'Empty access token field', 'vk-notifications-for-contact-form-7' )
+			_x( 'empty', 'Empty access token field', 'message-bridge-for-contact-form-7-and-vk' )
 		);
 	}
 
