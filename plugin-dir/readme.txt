@@ -4,7 +4,7 @@ Tags: contact form 7,vk,vkontakte
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 8.0
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,6 +73,9 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 
 == Changelog ==
 
+= 0.1.1 =
+* Updated plugin metadata, naming, external service disclosures, and release packaging for WordPress.org review.
+
 = 0.1.0 =
 * Bootstrap plugin shell created from the reference architecture.
 * React admin shell, CPTs, relations, settings page, and migration scaffolding added.
@@ -81,6 +84,9 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 * Delivery is restricted to active dialogs, and the admin UI now exposes copyable auth commands and channel title editing.
 
 == Upgrade Notice ==
+
+= 0.1.1 =
+Review preparation update.
 
 = 0.1.0 =
 Initial development release.
