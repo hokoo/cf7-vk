@@ -86,7 +86,4 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 == Upgrade Notice ==
 
 = 0.1.1 =
-Review preparation update.
-
-= 0.1.0 =
 Initial development release.
