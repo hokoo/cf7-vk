@@ -1,6 +1,6 @@
 {
   "name": "hokoo/wpcf7_vk",
-  "description": "Development environment for the Contact Form 7 VK adapter plugin.",
+  "description": "Development environment for Message Bridge for Contact Form 7 and VK.",
   "license": "proprietary",
   "authors": [
     {

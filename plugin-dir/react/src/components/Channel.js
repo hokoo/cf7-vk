@@ -139,7 +139,7 @@ const Channel = ({
             const savedChannel = await apiSaveChannel(channel.id, {title: nextTitle});
             onChannelSaved(savedChannel);
         } catch (err) {
-            setError(wp.i18n.__( 'Failed to update title', 'vk-notifications-for-contact-form-7' ));
+            setError(wp.i18n.__( 'Failed to update title', 'message-bridge-for-contact-form-7-and-vk' ));
         } finally {
             setSaving(false);
         }
@@ -247,7 +247,7 @@ const Channel = ({
     };
 
     const deleteChannel = async () => {
-        if (!window.confirm(wp.i18n.__( 'Remove this channel?', 'vk-notifications-for-contact-form-7' ))) {
+        if (!window.confirm(wp.i18n.__( 'Remove this channel?', 'message-bridge-for-contact-form-7-and-vk' ))) {
             return;
         }
 
@@ -269,11 +269,11 @@ const Channel = ({
     const getToggleButtonLabel = (status) => {
         switch (status.toLowerCase()) {
             case 'active':
-                return wp.i18n.__( 'Pause', 'vk-notifications-for-contact-form-7' );
+                return wp.i18n.__( 'Pause', 'message-bridge-for-contact-form-7-and-vk' );
             case 'paused':
-                return wp.i18n.__( 'Activate', 'vk-notifications-for-contact-form-7' );
+                return wp.i18n.__( 'Activate', 'message-bridge-for-contact-form-7-and-vk' );
             case 'muted':
-                return wp.i18n.__( 'Muted by bot', 'vk-notifications-for-contact-form-7' );
+                return wp.i18n.__( 'Muted by bot', 'message-bridge-for-contact-form-7-and-vk' );
             default:
                 return '';
         }

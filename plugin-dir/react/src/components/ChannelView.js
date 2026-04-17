@@ -66,13 +66,13 @@ const ChannelView = ({
                                                 label: bot.title
                                             }))}
                                             isSearchable={false}
-                                            placeholder={wp.i18n.__( 'Pick a VK bot', 'vk-notifications-for-contact-form-7' )}
+                                            placeholder={wp.i18n.__( 'Pick a VK bot', 'message-bridge-for-contact-form-7-and-vk' )}
                                             onChange={handleBotSelect}
                                             isClearable
                                         />
                                     ) : (
                                         <span className="no-bots-found">
-                                            [{wp.i18n.__( 'No VK bots available', 'vk-notifications-for-contact-form-7' )}]
+                                            [{wp.i18n.__( 'No VK bots available', 'message-bridge-for-contact-form-7-and-vk' )}]
                                         </span>
                                     )}
                                 </>
@@ -96,15 +96,15 @@ const ChannelView = ({
                             ))}
                         </>
                     ) : (
-                        <span className="no-chats-found">[{wp.i18n.__( 'No dialogs assigned to this channel', 'vk-notifications-for-contact-form-7' )}]</span>
+                        <span className="no-chats-found">[{wp.i18n.__( 'No dialogs assigned to this channel', 'message-bridge-for-contact-form-7-and-vk' )}]</span>
                     )}
                 </div>
 
                 <div className="frame forms">
                     <button className="add-button add-form-button" type="button" onClick={handleAddForm}>
                         {!showFormSelector
-                            ? wp.i18n.__( 'Add Form', 'vk-notifications-for-contact-form-7' )
-                            : wp.i18n.__( 'Cancel', 'vk-notifications-for-contact-form-7' )}
+                            ? wp.i18n.__( 'Add Form', 'message-bridge-for-contact-form-7-and-vk' )
+                            : wp.i18n.__( 'Cancel', 'message-bridge-for-contact-form-7-and-vk' )}
                     </button>
 
                     {showFormSelector ? (
@@ -116,7 +116,7 @@ const ChannelView = ({
                                 label: form.title
                             }))}
                             isSearchable={true}
-                            placeholder={wp.i18n.__( 'Pick a form', 'vk-notifications-for-contact-form-7' )}
+                            placeholder={wp.i18n.__( 'Pick a form', 'message-bridge-for-contact-form-7-and-vk' )}
                             onChange={handleFormSelect}
                             isClearable
                         />
@@ -136,7 +136,7 @@ const ChannelView = ({
                             ))}
                         </ul>
                     ) : !showFormSelector ? (
-                        <span className="no-forms-found">[{wp.i18n.__( 'No forms assigned to this channel', 'vk-notifications-for-contact-form-7' )}]</span>
+                        <span className="no-forms-found">[{wp.i18n.__( 'No forms assigned to this channel', 'message-bridge-for-contact-form-7-and-vk' )}]</span>
                     ) : null}
                 </div>
 
@@ -147,7 +147,7 @@ const ChannelView = ({
                         onClick={deleteChannel}
                         disabled={saving}
                     >
-                        {wp.i18n.__( 'Remove channel', 'vk-notifications-for-contact-form-7' )}
+                        {wp.i18n.__( 'Remove channel', 'message-bridge-for-contact-form-7-and-vk' )}
                     </button>
                 </div>
             </div>

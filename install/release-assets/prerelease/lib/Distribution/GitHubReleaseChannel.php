@@ -13,7 +13,7 @@ class GitHubReleaseChannel {
 		$update_checker = PucFactory::buildUpdateChecker(
 			'https://github.com/hokoo/cf7-vk',
 			CF7VK_FILE,
-			'cf7-vk',
+			'message-bridge-for-contact-form-7-and-vk',
 			1
 		);
 

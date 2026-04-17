@@ -5,8 +5,8 @@ set -euo pipefail
 MODE="${1:-stable}"
 OUTPUT_DIR="${2:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/build/${MODE}}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PLUGIN_DIR="${OUTPUT_DIR}/cf7-vk"
-ZIP_FILE="${OUTPUT_DIR}/cf7-vk-wp-plugin.zip"
+PLUGIN_DIR="${OUTPUT_DIR}/message-bridge-for-contact-form-7-and-vk"
+ZIP_FILE="${OUTPUT_DIR}/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip"
 OVERLAY_FILE="${ROOT_DIR}/install/release-assets/prerelease/lib/Distribution/GitHubReleaseChannel.php"
 
 case "${MODE}" in
@@ -115,7 +115,7 @@ find "${PLUGIN_DIR}" -depth -type d -name '.*' -exec rm -rf {} +
 
 (
 	cd "${OUTPUT_DIR}"
-	zip -rq "$(basename "${ZIP_FILE}")" cf7-vk
+	zip -rq "$(basename "${ZIP_FILE}")" message-bridge-for-contact-form-7-and-vk
 )
 
 echo "Built ${MODE} package directory: ${PLUGIN_DIR}"

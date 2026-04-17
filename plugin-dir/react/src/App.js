@@ -166,17 +166,17 @@ const App = () => {
     }, []);
 
     if (loading) {
-        return <div>{wp.i18n.__( 'Loading data...', 'vk-notifications-for-contact-form-7' )}</div>;
+        return <div>{wp.i18n.__( 'Loading data...', 'message-bridge-for-contact-form-7-and-vk' )}</div>;
     }
 
     return (
         <>
-            <h1>{wp.i18n.__( 'VK notificator settings', 'vk-notifications-for-contact-form-7' )}</h1>
+            <h1>{wp.i18n.__( 'VK Message Bridge Settings', 'message-bridge-for-contact-form-7-and-vk' )}</h1>
             <div className="cf7-tg-container" id="cf7-vk-container">
                 <div className="main-container">
                     <div className="list-container bots-container">
                         <div className="title-container">
-                            <h3 className="title">{wp.i18n.__( 'VK bots', 'vk-notifications-for-contact-form-7' )}</h3>
+                            <h3 className="title">{wp.i18n.__( 'Bots', 'message-bridge-for-contact-form-7-and-vk' )}</h3>
                             <NewBot onCreated={handleBotCreated} />
                         </div>
 
@@ -200,7 +200,7 @@ const App = () => {
 
                     <div className="list-container channels-container">
                         <div className="title-container">
-                            <h3 className="title">{wp.i18n.__( 'Channels', 'vk-notifications-for-contact-form-7' )}</h3>
+                            <h3 className="title">{wp.i18n.__( 'Channels', 'message-bridge-for-contact-form-7-and-vk' )}</h3>
                             <NewChannel onCreated={handleChannelCreated} />
                         </div>
 
@@ -229,7 +229,7 @@ const App = () => {
             </div>
 
             <style>
-                {`.copyable::after { content: '` + wp.i18n.__( 'Copied!', 'vk-notifications-for-contact-form-7' ) + `' !important }`}
+                {`.copyable::after { content: '` + wp.i18n.__( 'Copied!', 'message-bridge-for-contact-form-7-and-vk' ) + `' !important }`}
             </style>
         </>
     );

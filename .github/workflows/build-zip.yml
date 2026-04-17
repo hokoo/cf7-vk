@@ -35,7 +35,7 @@ jobs:
       - name: Upload Release Artifact
         uses: AButler/upload-release-assets@v3.0
         with:
-          files: ./build-artifacts/cf7-vk-wp-plugin.zip
+          files: ./build-artifacts/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set target branch
@@ -51,7 +51,7 @@ jobs:
           export DIST_WORKTREE=$(mktemp -d)
           export TARGET_BRANCH=${{ steps.branch.outputs.branch_name }}
 
-          cp -r build-artifacts/cf7-vk/. "$TEMP_DIR/"
+          cp -r build-artifacts/message-bridge-for-contact-form-7-and-vk/. "$TEMP_DIR/"
 
           if git ls-remote --exit-code --heads origin "$TARGET_BRANCH" >/dev/null 2>&1; then
             git fetch origin "$TARGET_BRANCH"
@@ -85,6 +85,6 @@ jobs:
         env:
           SVN_USERNAME: ${{ secrets.WPORG_USERNAME }}
           SVN_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
-          BUILD_DIR: ./build-artifacts/cf7-vk
-          SLUG: cf7-vk
+          BUILD_DIR: ./build-artifacts/message-bridge-for-contact-form-7-and-vk
+          SLUG: message-bridge-for-contact-form-7-and-vk
           VERSION: ${{ steps.clean_version.outputs.value }}

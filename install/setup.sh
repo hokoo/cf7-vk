@@ -2,7 +2,7 @@
 
 . ./install/setup-functions.sh
 
-PLUGIN_SLUG="cf7-vk"
+PLUGIN_SLUG="message-bridge-for-contact-form-7-and-vk"
 
 setup-env
 configure-nginx

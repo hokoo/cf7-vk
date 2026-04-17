@@ -25,7 +25,7 @@ class MessageFormatter {
 		if ( '' !== $form_title ) {
 			$meta_lines[] = sprintf(
 				/* translators: %s: Contact Form 7 form title */
-				__( 'Form: %s', 'vk-notifications-for-contact-form-7' ),
+				__( 'Form: %s', 'message-bridge-for-contact-form-7-and-vk' ),
 				$form_title
 			);
 		}
@@ -33,7 +33,7 @@ class MessageFormatter {
 		if ( '' !== $subject ) {
 			$meta_lines[] = sprintf(
 				/* translators: %s: mail subject */
-				__( 'Subject: %s', 'vk-notifications-for-contact-form-7' ),
+				__( 'Subject: %s', 'message-bridge-for-contact-form-7-and-vk' ),
 				self::normalizeInlineText( $subject )
 			);
 		}
@@ -42,13 +42,13 @@ class MessageFormatter {
 
 		if ( ! empty( $posted_pairs ) ) {
 			$meta_lines[] = '';
-			$meta_lines[] = __( 'Fields:', 'vk-notifications-for-contact-form-7' );
+			$meta_lines[] = __( 'Fields:', 'message-bridge-for-contact-form-7-and-vk' );
 			$meta_lines = array_merge( $meta_lines, $posted_pairs );
 		}
 
 		if ( '' !== $body ) {
 			$meta_lines[] = '';
-			$meta_lines[] = __( 'Message:', 'vk-notifications-for-contact-form-7' );
+			$meta_lines[] = __( 'Message:', 'message-bridge-for-contact-form-7-and-vk' );
 			$meta_lines[] = $body;
 		}
 
@@ -144,7 +144,7 @@ class MessageFormatter {
 		$key = trim( $key );
 
 		if ( '' === $key ) {
-			return __( 'Field', 'vk-notifications-for-contact-form-7' );
+			return __( 'Field', 'message-bridge-for-contact-form-7-and-vk' );
 		}
 
 		return ucwords( $key );

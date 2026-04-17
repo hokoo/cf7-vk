@@ -1,6 +1,6 @@
-# cf7-vk
+# Message Bridge for Contact Form 7 and VK
 
-Development repository for a WordPress plugin that routes Contact Form 7 submissions to VK community dialogs.
+Development repository for Message Bridge for Contact Form 7 and VK, a WordPress plugin that routes Contact Form 7 submissions to VK community dialogs.
 
 ## Current milestone
 
@@ -39,7 +39,7 @@ cd plugin-dir/react && npm install
 npm run build
 ```
 
-`make setup.all` now mirrors the original project bootstrap more closely: it creates `.env`, generates nginx configs, starts Docker, installs root and plugin Composer dependencies inside the PHP container, prepares `dev-content` / `betas-content`, creates the `dev-content/plugins/cf7-vk -> plugin-dir` symlink, generates `index.php` / config files, and can initialize the dev+betas WordPress databases interactively.
+`make setup.all` now mirrors the original project bootstrap more closely: it creates `.env`, generates nginx configs, starts Docker, installs root and plugin Composer dependencies inside the PHP container, prepares `dev-content` / `betas-content`, creates the `dev-content/plugins/message-bridge-for-contact-form-7-and-vk -> plugin-dir` symlink, generates `index.php` / config files, and can initialize the dev+betas WordPress databases interactively.
 
 The default local PHP runtime is pinned through `PHP_TAG=8.4` in `install/.example/.env.example`, paired with a newer `wodby/wordpress-php` base image so that bundled WP-CLI stays quiet during setup on PHP 8.4 without a custom phar override.
 

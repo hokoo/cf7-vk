@@ -10,11 +10,11 @@ const NewChannel = ({onCreated}) => {
         setSaving(true);
 
         try {
-            const createdChannel = await apiCreateChannel(wp.i18n.__( 'VK Channel', 'vk-notifications-for-contact-form-7' ));
+            const createdChannel = await apiCreateChannel(wp.i18n.__( 'Channel', 'message-bridge-for-contact-form-7-and-vk' ));
             onCreated(createdChannel);
         } catch (error) {
             console.error('Error creating channel:', error);
-            alert(wp.i18n.__( 'Failed to create channel', 'vk-notifications-for-contact-form-7' ));
+            alert(wp.i18n.__( 'Failed to create channel', 'message-bridge-for-contact-form-7-and-vk' ));
         } finally {
             setSaving(false);
         }
@@ -22,7 +22,7 @@ const NewChannel = ({onCreated}) => {
 
     return (
         <button className="add-button add-channel-button" onClick={handleCreateChannel} disabled={saving}>
-            {wp.i18n.__( 'Create Channel', 'vk-notifications-for-contact-form-7' )}
+            {wp.i18n.__( 'Create Channel', 'message-bridge-for-contact-form-7-and-vk' )}
         </button>
     );
 };

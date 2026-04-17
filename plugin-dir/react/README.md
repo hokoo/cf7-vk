@@ -1,6 +1,6 @@
 # React admin shell
 
-This directory contains the admin UI for the `cf7-vk` plugin.
+This directory contains the admin UI for Message Bridge for Contact Form 7 and VK.
 
 ## Purpose in the first epic
 
