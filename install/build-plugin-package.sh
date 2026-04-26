@@ -5,8 +5,18 @@ set -euo pipefail
 MODE="${1:-stable}"
 OUTPUT_DIR="${2:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/build/${MODE}}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PLUGIN_FILE="${ROOT_DIR}/plugin-dir/cf7-vk.php"
+PLUGIN_VERSION="$(
+	awk '
+		/^[[:space:]]*\*[[:space:]]+Version:/ {
+			sub(/^[[:space:]]*\*[[:space:]]+Version:[[:space:]]*/, "");
+			print $1;
+			exit;
+		}
+	' "${PLUGIN_FILE}"
+)"
 PLUGIN_DIR="${OUTPUT_DIR}/message-bridge-for-contact-form-7-and-vk"
-ZIP_FILE="${OUTPUT_DIR}/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip"
+ZIP_FILE="${OUTPUT_DIR}/message-bridge-for-contact-form-7-and-vk-${PLUGIN_VERSION}.zip"
 OVERLAY_FILE="${ROOT_DIR}/install/release-assets/prerelease/lib/Distribution/GitHubReleaseChannel.php"
 
 case "${MODE}" in
@@ -22,6 +32,11 @@ command -v zip >/dev/null 2>&1 || {
 	echo "The 'zip' command is required to build the plugin package." >&2
 	exit 1
 }
+
+if [ -z "${PLUGIN_VERSION}" ]; then
+	echo "Unable to detect plugin version from ${PLUGIN_FILE}." >&2
+	exit 1
+fi
 
 export COMPOSER_ROOT_VERSION="${COMPOSER_ROOT_VERSION:-1.0.0}"
 export COMPOSER_NO_INTERACTION=1
