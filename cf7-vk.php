@@ -3,11 +3,12 @@
  * Plugin Name: Message Bridge for Contact Form 7 and VK
  * Description: Sends Contact Form 7 submissions to VK dialogs through configurable message bridge channels.
  * Author: Hokku
- * Version: 0.1.1
+ * Version: 0.1.2
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: message-bridge-for-contact-form-7-and-vk
  * Domain Path: /languages
+ * Requires PHP: 8.1
  * Requires Plugins: contact-form-7
  */
 
@@ -22,7 +23,7 @@ use iTRON\cf7Vk\Settings;
 
 define( 'CF7VK_PLUGIN_NAME', plugin_basename( __FILE__ ) );
 
-const CF7VK_VERSION = '0.1.1';
+const CF7VK_VERSION = '0.1.2';
 const CF7VK_FILE = __FILE__;
 
 require __DIR__ . '/vendor/autoload.php';

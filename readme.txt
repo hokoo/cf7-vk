@@ -3,8 +3,8 @@ Contributors: hokku, igortron
 Tags: contact form 7,vk,vkontakte
 Requires at least: 6.0
 Tested up to: 6.9
-Requires PHP: 8.0
-Stable tag: 0.1.1
+Requires PHP: 8.1
+Stable tag: 0.1.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,6 +73,9 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 
 == Changelog ==
 
+= 0.1.2 =
+* Updated bundled dependencies and REST endpoint permissions for WordPress.org review.
+
 = 0.1.1 =
 * Updated plugin metadata, naming, external service disclosures, and release packaging for WordPress.org review.
 
@@ -85,5 +88,5 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 
 == Upgrade Notice ==
 
-= 0.1.1 =
-Initial development release.
+= 0.1.2 =
+Review fixes for bundled dependencies and REST endpoint permissions.

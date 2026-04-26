@@ -10,7 +10,6 @@ return array(
     'iTRON\\wpConnections\\Tests\\' => array($vendorDir . '/hokoo/wpconnections/tests'),
     'iTRON\\wpConnections\\' => array($vendorDir . '/hokoo/wpconnections/src'),
     'iTRON\\cf7Vk\\' => array($baseDir . '/lib'),
-    'Symfony\\Polyfill\\Php81\\' => array($vendorDir . '/symfony/polyfill-php81'),
     'Ramsey\\Collection\\' => array($vendorDir . '/ramsey/collection/src'),
     'Psr\\Log\\' => array($vendorDir . '/psr/log/src'),
 );

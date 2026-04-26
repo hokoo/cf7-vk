@@ -4,12 +4,8 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930
+class ComposerStaticInit8026bb9be94e5af8b081fd166c874365
 {
-    public static $files = array (
-        '23c18046f52bef3eea034657bafda50f' => __DIR__ . '/..' . '/symfony/polyfill-php81/bootstrap.php',
-    );
-
     public static $prefixLengthsPsr4 = array (
         'i' =>
         array (
@@ -17,10 +13,6 @@ class ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930
             'iTRON\\wpConnections\\Tests\\' => 26,
             'iTRON\\wpConnections\\' => 20,
             'iTRON\\cf7Vk\\' => 12,
-        ),
-        'S' =>
-        array (
-            'Symfony\\Polyfill\\Php81\\' => 23,
         ),
         'R' =>
         array (
@@ -49,10 +41,6 @@ class ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930
         array (
             0 => __DIR__ . '/../..' . '/lib',
         ),
-        'Symfony\\Polyfill\\Php81\\' =>
-        array (
-            0 => __DIR__ . '/..' . '/symfony/polyfill-php81',
-        ),
         'Ramsey\\Collection\\' =>
         array (
             0 => __DIR__ . '/..' . '/ramsey/collection/src',
@@ -64,7 +52,6 @@ class ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930
     );
 
     public static $classMap = array (
-        'CURLStringFile' => __DIR__ . '/..' . '/symfony/polyfill-php81/Resources/stubs/CURLStringFile.php',
         'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
         'Psr\\Log\\AbstractLogger' => __DIR__ . '/..' . '/psr/log/src/AbstractLogger.php',
         'Psr\\Log\\InvalidArgumentException' => __DIR__ . '/..' . '/psr/log/src/InvalidArgumentException.php',
@@ -82,13 +69,13 @@ class ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930
         'Ramsey\\Collection\\CollectionInterface' => __DIR__ . '/..' . '/ramsey/collection/src/CollectionInterface.php',
         'Ramsey\\Collection\\DoubleEndedQueue' => __DIR__ . '/..' . '/ramsey/collection/src/DoubleEndedQueue.php',
         'Ramsey\\Collection\\DoubleEndedQueueInterface' => __DIR__ . '/..' . '/ramsey/collection/src/DoubleEndedQueueInterface.php',
+        'Ramsey\\Collection\\Exception\\CollectionException' => __DIR__ . '/..' . '/ramsey/collection/src/Exception/CollectionException.php',
         'Ramsey\\Collection\\Exception\\CollectionMismatchException' => __DIR__ . '/..' . '/ramsey/collection/src/Exception/CollectionMismatchException.php',
         'Ramsey\\Collection\\Exception\\InvalidArgumentException' => __DIR__ . '/..' . '/ramsey/collection/src/Exception/InvalidArgumentException.php',
-        'Ramsey\\Collection\\Exception\\InvalidSortOrderException' => __DIR__ . '/..' . '/ramsey/collection/src/Exception/InvalidSortOrderException.php',
+        'Ramsey\\Collection\\Exception\\InvalidPropertyOrMethod' => __DIR__ . '/..' . '/ramsey/collection/src/Exception/InvalidPropertyOrMethod.php',
         'Ramsey\\Collection\\Exception\\NoSuchElementException' => __DIR__ . '/..' . '/ramsey/collection/src/Exception/NoSuchElementException.php',
         'Ramsey\\Collection\\Exception\\OutOfBoundsException' => __DIR__ . '/..' . '/ramsey/collection/src/Exception/OutOfBoundsException.php',
         'Ramsey\\Collection\\Exception\\UnsupportedOperationException' => __DIR__ . '/..' . '/ramsey/collection/src/Exception/UnsupportedOperationException.php',
-        'Ramsey\\Collection\\Exception\\ValueExtractionException' => __DIR__ . '/..' . '/ramsey/collection/src/Exception/ValueExtractionException.php',
         'Ramsey\\Collection\\GenericArray' => __DIR__ . '/..' . '/ramsey/collection/src/GenericArray.php',
         'Ramsey\\Collection\\Map\\AbstractMap' => __DIR__ . '/..' . '/ramsey/collection/src/Map/AbstractMap.php',
         'Ramsey\\Collection\\Map\\AbstractTypedMap' => __DIR__ . '/..' . '/ramsey/collection/src/Map/AbstractTypedMap.php',
@@ -100,11 +87,10 @@ class ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930
         'Ramsey\\Collection\\Queue' => __DIR__ . '/..' . '/ramsey/collection/src/Queue.php',
         'Ramsey\\Collection\\QueueInterface' => __DIR__ . '/..' . '/ramsey/collection/src/QueueInterface.php',
         'Ramsey\\Collection\\Set' => __DIR__ . '/..' . '/ramsey/collection/src/Set.php',
+        'Ramsey\\Collection\\Sort' => __DIR__ . '/..' . '/ramsey/collection/src/Sort.php',
         'Ramsey\\Collection\\Tool\\TypeTrait' => __DIR__ . '/..' . '/ramsey/collection/src/Tool/TypeTrait.php',
         'Ramsey\\Collection\\Tool\\ValueExtractorTrait' => __DIR__ . '/..' . '/ramsey/collection/src/Tool/ValueExtractorTrait.php',
         'Ramsey\\Collection\\Tool\\ValueToStringTrait' => __DIR__ . '/..' . '/ramsey/collection/src/Tool/ValueToStringTrait.php',
-        'ReturnTypeWillChange' => __DIR__ . '/..' . '/symfony/polyfill-php81/Resources/stubs/ReturnTypeWillChange.php',
-        'Symfony\\Polyfill\\Php81\\Php81' => __DIR__ . '/..' . '/symfony/polyfill-php81/Php81.php',
         'iTRON\\cf7Vk\\Bot' => __DIR__ . '/../..' . '/lib/Bot.php',
         'iTRON\\cf7Vk\\Channel' => __DIR__ . '/../..' . '/lib/Channel.php',
         'iTRON\\cf7Vk\\Chat' => __DIR__ . '/../..' . '/lib/Chat.php',
@@ -181,9 +167,9 @@ class ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit79ead1b5cec219de3a612c0bd4fb7930::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit8026bb9be94e5af8b081fd166c874365::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit8026bb9be94e5af8b081fd166c874365::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit8026bb9be94e5af8b081fd166c874365::$classMap;
 
         }, null, ClassLoader::class);
     }

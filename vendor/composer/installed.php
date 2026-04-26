@@ -22,7 +22,7 @@
         'hokoo/wpconnections' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '9a968a092451dcc1a33de6f778ab5bd2a6db0e72',
+            'reference' => '97ab488e96592c73ca7368d4e280d7773a77bd94',
             'type' => 'library',
             'install_path' => __DIR__ . '/../hokoo/wpconnections',
             'aliases' => array(
@@ -51,20 +51,11 @@
             'dev_requirement' => false,
         ),
         'ramsey/collection' => array(
-            'pretty_version' => '1.3.0',
-            'version' => '1.3.0.0',
-            'reference' => 'ad7475d1c9e70b190ecffc58f2d989416af339b4',
+            'pretty_version' => '2.1.1',
+            'version' => '2.1.1.0',
+            'reference' => '344572933ad0181accbf4ba763e85a0306a8c5e2',
             'type' => 'library',
             'install_path' => __DIR__ . '/../ramsey/collection',
-            'aliases' => array(),
-            'dev_requirement' => false,
-        ),
-        'symfony/polyfill-php81' => array(
-            'pretty_version' => 'v1.33.0',
-            'version' => '1.33.0.0',
-            'reference' => '4a4cfc2d253c21a5ad0e53071df248ed48c6ce5c',
-            'type' => 'library',
-            'install_path' => __DIR__ . '/../symfony/polyfill-php81',
             'aliases' => array(),
             'dev_requirement' => false,
         ),
