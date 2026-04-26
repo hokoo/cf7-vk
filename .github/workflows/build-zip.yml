@@ -80,7 +80,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to WordPress.org (production only)
-        if: ${{ github.event.release.prerelease == false }}
+        if: ${{ github.event.release.prerelease == false && secrets.WPORG_USERNAME != '' }}
         uses: 10up/action-wordpress-plugin-deploy@stable
         env:
           SVN_USERNAME: ${{ secrets.WPORG_USERNAME }}
