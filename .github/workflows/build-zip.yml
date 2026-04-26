@@ -11,6 +11,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      WPORG_USERNAME: ${{ secrets.WPORG_USERNAME }}
+      WPORG_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
 
     steps:
       - name: Check out the source code
@@ -80,11 +83,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to WordPress.org (production only)
-        if: ${{ github.event.release.prerelease == false && secrets.WPORG_USERNAME != '' }}
+        if: ${{ github.event.release.prerelease == false && env.WPORG_USERNAME != '' && env.WPORG_PASSWORD != '' }}
         uses: 10up/action-wordpress-plugin-deploy@stable
         env:
-          SVN_USERNAME: ${{ secrets.WPORG_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
+          SVN_USERNAME: ${{ env.WPORG_USERNAME }}
+          SVN_PASSWORD: ${{ env.WPORG_PASSWORD }}
           BUILD_DIR: ./build-artifacts/message-bridge-for-contact-form-7-and-vk
           SLUG: message-bridge-for-contact-form-7-and-vk
           VERSION: ${{ steps.clean_version.outputs.value }}
