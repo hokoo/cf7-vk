@@ -32,10 +32,14 @@ jobs:
           BUILD_MODE=$([ "${{ github.event.release.prerelease }}" = "true" ] && echo "prerelease" || echo "stable")
           ./install/build-plugin-package.sh "${BUILD_MODE}" "${GITHUB_WORKSPACE}/build-artifacts"
 
+      - name: Prepare version without "v"
+        id: clean_version
+        run: echo "value=${{ github.event.release.tag_name }}" | sed -E 's/^value=(v|version)-?/value=/' >> $GITHUB_OUTPUT
+
       - name: Upload Release Artifact
         uses: AButler/upload-release-assets@v3.0
         with:
-          files: ./build-artifacts/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip
+          files: ./build-artifacts/message-bridge-for-contact-form-7-and-vk-${{ steps.clean_version.outputs.value }}.zip
           repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set target branch
@@ -74,10 +78,6 @@ jobs:
           git push origin HEAD:"$TARGET_BRANCH"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare version without "v"
-        id: clean_version
-        run: echo "value=${{ github.event.release.tag_name }}" | sed -E 's/^value=(v|version)-?/value=/' >> $GITHUB_OUTPUT
 
       - name: Deploy to WordPress.org (production only)
         if: ${{ github.event.release.prerelease == false }}
