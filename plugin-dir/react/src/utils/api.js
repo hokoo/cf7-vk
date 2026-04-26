@@ -123,11 +123,13 @@ export const apiDeleteBot = async (botId) => apiRequest(
 );
 
 export const apiPingBot = async (botId) => apiRequest(
-    `${cf7VkData.routes.bots}${botId}/ping`
+    `${cf7VkData.routes.bots}${botId}/ping`,
+    'POST'
 );
 
 export const apiFetchUpdates = async (botId) => apiRequest(
-    `${cf7VkData.routes.bots}${botId}/fetch_updates`
+    `${cf7VkData.routes.bots}${botId}/fetch_updates`,
+    'POST'
 );
 
 export const apiActivateBotChat = async (botId, chatId) => apiRequest(

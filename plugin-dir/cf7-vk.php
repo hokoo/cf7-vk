@@ -8,6 +8,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: message-bridge-for-contact-form-7-and-vk
  * Domain Path: /languages
+ * Requires PHP: 8.1
  * Requires Plugins: contact-form-7
  */
 

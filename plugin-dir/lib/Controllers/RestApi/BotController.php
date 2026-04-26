@@ -8,6 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use iTRON\cf7Vk\Bot;
 use iTRON\cf7Vk\Chat;
+use iTRON\cf7Vk\Client;
 use iTRON\cf7Vk\Exceptions\TransportNotConfigured;
 use iTRON\cf7Vk\Exceptions\VkApiException;
 use iTRON\wpConnections\Exceptions\ConnectionNotFound;
@@ -35,9 +36,9 @@ class BotController extends Controller {
 					],
 				],
 				[
-					'methods' => WP_REST_Server::READABLE,
+					'methods' => WP_REST_Server::CREATABLE,
 					'callback' => [ $this, 'ping' ],
-					'permission_callback' => [ $this, 'get_item_permissions_check' ],
+					'permission_callback' => [ $this, 'manage_bot_permissions_check' ],
 				],
 			]
 		);
@@ -53,9 +54,9 @@ class BotController extends Controller {
 					],
 				],
 				[
-					'methods' => WP_REST_Server::READABLE,
+					'methods' => WP_REST_Server::CREATABLE,
 					'callback' => [ $this, 'fetch_updates' ],
-					'permission_callback' => [ $this, 'get_item_permissions_check' ],
+					'permission_callback' => [ $this, 'manage_bot_permissions_check' ],
 				],
 			]
 		);
@@ -75,12 +76,44 @@ class BotController extends Controller {
 					],
 				],
 				[
-					'methods' => WP_REST_Server::EDITABLE,
+					'methods' => WP_REST_Server::CREATABLE,
 					'callback' => [ $this, 'activate_chat' ],
-					'permission_callback' => [ $this, 'get_item_permissions_check' ],
+					'permission_callback' => [ $this, 'activate_chat_permissions_check' ],
 				],
 			]
 		);
+	}
+
+	public function manage_bot_permissions_check( $request ) {
+		return $this->update_item_permissions_check( $request );
+	}
+
+	public function activate_chat_permissions_check( $request ) {
+		$permissions = $this->update_item_permissions_check( $request );
+
+		if ( true !== $permissions ) {
+			return $permissions;
+		}
+
+		$chat = get_post( (int) $request['chat_id'] );
+
+		if ( ! $chat || Client::CPT_CHAT !== $chat->post_type ) {
+			return new WP_Error(
+				'rest_post_invalid_id',
+				__( 'Invalid post ID.' ),
+				[ 'status' => 404 ]
+			);
+		}
+
+		if ( ! current_user_can( 'edit_post', $chat->ID ) ) {
+			return new WP_Error(
+				'rest_cannot_edit',
+				__( 'Sorry, you are not allowed to edit this post.' ),
+				[ 'status' => rest_authorization_required_code() ]
+			);
+		}
+
+		return true;
 	}
 
 	public function ping( $request ) {
