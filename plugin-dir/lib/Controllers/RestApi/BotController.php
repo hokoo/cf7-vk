@@ -100,7 +100,7 @@ class BotController extends Controller {
 		if ( ! $chat || Client::CPT_CHAT !== $chat->post_type ) {
 			return new WP_Error(
 				'rest_post_invalid_id',
-				__( 'Invalid post ID.' ),
+				__( 'Invalid post ID.', 'message-bridge-for-contact-form-7-and-vk' ),
 				[ 'status' => 404 ]
 			);
 		}
@@ -108,7 +108,7 @@ class BotController extends Controller {
 		if ( ! current_user_can( 'edit_post', $chat->ID ) ) {
 			return new WP_Error(
 				'rest_cannot_edit',
-				__( 'Sorry, you are not allowed to edit this post.' ),
+				__( 'Sorry, you are not allowed to edit this post.', 'message-bridge-for-contact-form-7-and-vk' ),
 				[ 'status' => rest_authorization_required_code() ]
 			);
 		}
