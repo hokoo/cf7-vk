@@ -75,7 +75,7 @@ class Settings {
 				true
 			);
 			wp_set_script_translations( 'cf7-vk-admin', 'message-bridge-for-contact-form-7-and-vk' );
-			wp_localize_script( 'cf7-vk-admin', 'cf7VkData', self::getScriptData() );
+			wp_localize_script( 'cf7-vk-admin', 'cf7vkData', self::getScriptData() );
 		}
 	}
 

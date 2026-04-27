@@ -1,4 +1,4 @@
-/* global wp, cf7VkData */
+/* global wp, cf7vkData */
 
 import React, {useEffect, useRef, useState} from 'react';
 import BotView from './BotView';
@@ -24,7 +24,7 @@ const getStatusClass = (status) => {
     return 'unknown';
 };
 
-const getEmptySecret = () => cf7VkData?.phrases?.emptySecret || wp.i18n.__( '[empty]', 'message-bridge-for-contact-form-7-and-vk' );
+const getEmptySecret = () => cf7vkData?.phrases?.emptySecret || wp.i18n.__( '[empty]', 'message-bridge-for-contact-form-7-and-vk' );
 
 const getEditableAccessToken = (bot) => {
     if (bot.isAccessTokenDefinedByConst || bot.isAccessTokenEmpty || bot.accessToken === getEmptySecret()) {

@@ -1,11 +1,11 @@
-/* global cf7VkData */
+/* global cf7vkData */
 
 const buildRequest = (url, method = 'GET', body = null) => {
     const query = {
         method,
         headers: {
             'Content-Type': 'application/json',
-            'X-WP-Nonce': cf7VkData?.nonce
+            'X-WP-Nonce': cf7vkData?.nonce
         }
     };
 
@@ -90,17 +90,17 @@ const apiCollectionRequest = async (url, params = {}) => {
     return items;
 };
 
-export const fetchBots = async () => apiCollectionRequest(cf7VkData.routes.bots, {orderby: 'id', order: 'asc'});
-export const fetchChannels = async () => apiCollectionRequest(cf7VkData.routes.channels, {orderby: 'id', order: 'asc'});
-export const fetchChats = async () => apiCollectionRequest(cf7VkData.routes.chats, {orderby: 'id', order: 'asc'});
-export const fetchForms = async () => apiRequest(cf7VkData.routes.forms);
-export const fetchBotsForChannels = async () => apiRequest(cf7VkData.routes.relations.bot2channel);
-export const fetchBotsForChats = async () => apiRequest(cf7VkData.routes.relations.bot2chat);
-export const fetchChatsForChannels = async () => apiRequest(cf7VkData.routes.relations.chat2channel);
-export const fetchFormsForChannels = async () => apiRequest(cf7VkData.routes.relations.form2channel);
+export const fetchBots = async () => apiCollectionRequest(cf7vkData.routes.bots, {orderby: 'id', order: 'asc'});
+export const fetchChannels = async () => apiCollectionRequest(cf7vkData.routes.channels, {orderby: 'id', order: 'asc'});
+export const fetchChats = async () => apiCollectionRequest(cf7vkData.routes.chats, {orderby: 'id', order: 'asc'});
+export const fetchForms = async () => apiRequest(cf7vkData.routes.forms);
+export const fetchBotsForChannels = async () => apiRequest(cf7vkData.routes.relations.bot2channel);
+export const fetchBotsForChats = async () => apiRequest(cf7vkData.routes.relations.bot2chat);
+export const fetchChatsForChannels = async () => apiRequest(cf7vkData.routes.relations.chat2channel);
+export const fetchFormsForChannels = async () => apiRequest(cf7vkData.routes.relations.form2channel);
 
 export const apiCreateBot = async ({title, groupId, accessToken, authCommand}) => apiRequest(
-    cf7VkData.routes.bots,
+    cf7vkData.routes.bots,
     'POST',
     {
         title,
@@ -112,33 +112,33 @@ export const apiCreateBot = async ({title, groupId, accessToken, authCommand}) =
 );
 
 export const apiSaveBot = async (botId, payload) => apiRequest(
-    `${cf7VkData.routes.bots}${botId}`,
+    `${cf7vkData.routes.bots}${botId}`,
     'POST',
     payload
 );
 
 export const apiDeleteBot = async (botId) => apiRequest(
-    `${cf7VkData.routes.bots}${botId}/?force=true`,
+    `${cf7vkData.routes.bots}${botId}/?force=true`,
     'DELETE'
 );
 
 export const apiPingBot = async (botId) => apiRequest(
-    `${cf7VkData.routes.bots}${botId}/ping`,
+    `${cf7vkData.routes.bots}${botId}/ping`,
     'POST'
 );
 
 export const apiFetchUpdates = async (botId) => apiRequest(
-    `${cf7VkData.routes.bots}${botId}/fetch_updates`,
+    `${cf7vkData.routes.bots}${botId}/fetch_updates`,
     'POST'
 );
 
 export const apiActivateBotChat = async (botId, chatId) => apiRequest(
-    `${cf7VkData.routes.bots}${botId}/chats/${chatId}/activate`,
+    `${cf7vkData.routes.bots}${botId}/chats/${chatId}/activate`,
     'POST'
 );
 
 export const apiCreateChannel = async (title) => apiRequest(
-    cf7VkData.routes.channels,
+    cf7vkData.routes.channels,
     'POST',
     {
         title,
@@ -147,61 +147,61 @@ export const apiCreateChannel = async (title) => apiRequest(
 );
 
 export const apiSaveChannel = async (channelId, payload) => apiRequest(
-    `${cf7VkData.routes.channels}${channelId}`,
+    `${cf7vkData.routes.channels}${channelId}`,
     'POST',
     payload
 );
 
 export const apiDeleteChannel = async (channelId) => apiRequest(
-    `${cf7VkData.routes.channels}${channelId}/?force=true`,
+    `${cf7vkData.routes.channels}${channelId}/?force=true`,
     'DELETE'
 );
 
 export const apiConnectBotToChannel = async (botId, channelId) => apiRequest(
-    cf7VkData.routes.relations.bot2channel,
+    cf7vkData.routes.relations.bot2channel,
     'POST',
     {from: botId, to: channelId}
 );
 
 export const apiDisconnectBotFromChannel = async (connectionId) => apiRequest(
-    `${cf7VkData.routes.relations.bot2channel}${connectionId}`,
+    `${cf7vkData.routes.relations.bot2channel}${connectionId}`,
     'DELETE'
 );
 
 export const apiDisconnectBotFromChat = async (connectionId) => apiRequest(
-    `${cf7VkData.routes.relations.bot2chat}${connectionId}`,
+    `${cf7vkData.routes.relations.bot2chat}${connectionId}`,
     'DELETE'
 );
 
 export const apiSetBotChatStatus = async (connectionId, status) => apiRequest(
-    `${cf7VkData.routes.relations.bot2chat}${connectionId}/meta`,
+    `${cf7vkData.routes.relations.bot2chat}${connectionId}/meta`,
     'PATCH',
     {meta: [{key: 'status', value: status}]}
 );
 
 export const apiConnectChatToChannel = async (chatId, channelId) => apiRequest(
-    cf7VkData.routes.relations.chat2channel,
+    cf7vkData.routes.relations.chat2channel,
     'POST',
     {from: chatId, to: channelId}
 );
 
 export const apiDisconnectChatFromChannel = async (connectionId) => apiRequest(
-    `${cf7VkData.routes.relations.chat2channel}${connectionId}`,
+    `${cf7vkData.routes.relations.chat2channel}${connectionId}`,
     'DELETE'
 );
 
 export const apiConnectFormToChannel = async (formId, channelId) => apiRequest(
-    cf7VkData.routes.relations.form2channel,
+    cf7vkData.routes.relations.form2channel,
     'POST',
     {from: formId, to: channelId}
 );
 
 export const apiDisconnectFormFromChannel = async (connectionId) => apiRequest(
-    `${cf7VkData.routes.relations.form2channel}${connectionId}`,
+    `${cf7vkData.routes.relations.form2channel}${connectionId}`,
     'DELETE'
 );
 
 export const apiDeleteChat = async (chatId) => apiRequest(
-    `${cf7VkData.routes.chats}${chatId}/?force=true`,
+    `${cf7vkData.routes.chats}${chatId}/?force=true`,
     'DELETE'
 );

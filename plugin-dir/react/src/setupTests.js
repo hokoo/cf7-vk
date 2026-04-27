@@ -6,7 +6,7 @@ global.wp = {
     },
 };
 
-global.cf7VkData = {
+global.cf7vkData = {
     intervals: {
         ping: 5000,
         bot_fetch: 30000,

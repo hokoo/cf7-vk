@@ -1,4 +1,4 @@
-/* global wp, cf7VkData */
+/* global wp, cf7vkData */
 
 import React from 'react';
 import {copyWithTooltip} from '../utils/main';
@@ -30,7 +30,7 @@ const BotView = ({
     const botTitle = bot.title?.rendered || wp.i18n.__( 'Untitled bot', 'message-bridge-for-contact-form-7-and-vk' );
     const visibleBotTitle = formatBotTitle(botTitle);
     const authCommand = form.authCommand.trim() || 'start';
-    const emptySecret = cf7VkData?.phrases?.emptySecret || wp.i18n.__( '[empty]', 'message-bridge-for-contact-form-7-and-vk' );
+    const emptySecret = cf7vkData?.phrases?.emptySecret || wp.i18n.__( '[empty]', 'message-bridge-for-contact-form-7-and-vk' );
     const hasTokenValue = Boolean(form.accessToken.trim()) && form.accessToken !== emptySecret;
     const tokenDisplay = bot.isAccessTokenDefinedByConst
         ? bot.accessTokenConst

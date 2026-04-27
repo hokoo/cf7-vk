@@ -33,7 +33,7 @@ class Logger {
 			'data'			=> $data,
 		];
 
-		// Trigger action OF OTHER plugins.
+		// Integration hook for the wp-data-logger plugin.
 		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 		do_action( 'logger', $data );
 
