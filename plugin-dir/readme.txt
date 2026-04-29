@@ -4,7 +4,7 @@ Tags: contact form 7,vk,vkontakte
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 0.1.3
+Stable tag: 0.1.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,9 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 
 == Changelog ==
 
+= 0.1.4 =
+* Added PHP constant helpers for VK credentials, expanded setup documentation, and moved release workflow settings to repository variables.
+
 = 0.1.3 =
 * Clarified the WP Data Logger integration hook and aligned the localized admin script object with the plugin prefix.
 
@@ -107,6 +110,9 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 * Delivery is restricted to active dialogs, and the admin UI now exposes copyable auth commands and channel title editing.
 
 == Upgrade Notice ==
+
+= 0.1.4 =
+Credential setup and release workflow maintenance updates.
 
 = 0.1.3 =
 Prefix compliance updates for the WordPress.org review process.
