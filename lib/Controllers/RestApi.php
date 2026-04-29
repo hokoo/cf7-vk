@@ -30,8 +30,12 @@ class RestApi {
 					$bot = new Bot( $object['id'] );
 					$token = $bot->getAccessToken();
 
-					if ( $bot->isAccessTokenDefined() || empty( $token ) ) {
+					if ( empty( $token ) ) {
 						return Bot::getEmptySecret();
+					}
+
+					if ( $bot->isAccessTokenDefined() ) {
+						return substr( $token, -4 );
 					}
 
 					return $token;
