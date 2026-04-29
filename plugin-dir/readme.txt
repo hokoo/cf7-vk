@@ -12,26 +12,43 @@ Send Contact Form 7 notifications to VK dialogs through a configurable message b
 
 == Description ==
 
-Message Bridge for Contact Form 7 and VK is under active development. The current milestone establishes the routing shell, VK transport backend, and manual dialog onboarding flow:
+Message Bridge for Contact Form 7 and VK sends Contact Form 7 submissions to VKontakte users through a connected VK community. The number of VK recipients is not limited by the plugin: users subscribe to messages from the connected community, and the community acts as the notification bridge.
 
-1. Create VK bot/community records in the plugin UI.
-2. Verify VK credentials and fetch Long Poll bootstrap data from the admin screen.
-3. Discover dialogs by syncing Long Poll updates and matching the configured authorization command.
-4. Create routing channels in the plugin UI.
-5. Link Contact Form 7 forms and discovered dialogs to channels.
-6. Activate the dialogs that are allowed to receive notifications.
-7. Deliver Contact Form 7 submissions to VK as formatted plain-text notifications.
+To set up delivery:
+
+1. Create a VK community that will send the notifications.
+2. In the VK community settings, open Community management > Messages and enable community messages.
+3. Open Advanced > API usage, go to the LongPoll API tab, enable LongPoll API, and select API version 5.199 from the dropdown.
+4. Switch to Event types and enable Incoming messages.
+5. Open the Access keys tab and create a community access token with permission to use community messages.
+6. Open the Callback API tab and copy the `group_id` value.
+7. In the plugin interface, click Create Bot.
+8. Enter the Group ID, save the access token, or use the Copy PHP const controls to keep these values in PHP constants. Then wait for the bot status to become online. Configured and working bots are shown in blue.
+9. Ask each VK recipient to open the community messages and send <code>start</code> to the community.
+10. Approve or reject each subscription request in the plugin interface.
+11. Create a channel in the plugin interface to connect specific Contact Form 7 forms with the VK bot/community that should send their notifications.
 
 = Hooks =
 
 Filter <code>cf7vk_skip_delivery</code>
-Use it to skip the delivery pipeline for a submission.
+Return a truthy value to stop delivery for the current Contact Form 7 submission before channels and messages are resolved.
+Arguments: <code>$skip</code> (bool), <code>$contact_form</code> (WPCF7_ContactForm), <code>$submission</code> (WPCF7_Submission).
+
+Filter <code>cf7vk_unfiltered_message</code>
+Filters the Contact Form 7 mail body after mail-tag replacement and before VK-specific formatting.
+Arguments: <code>$message</code> (string), <code>$submission</code> (WPCF7_Submission).
+
+Filter <code>cf7vk_prepared_message</code>
+Filters the formatted VK notification text before it is passed to the linked delivery channels.
+Arguments: <code>$prepared_message</code> (string), <code>$submission</code> (WPCF7_Submission), <code>$contact_form</code> (WPCF7_ContactForm), <code>$mail</code> (array).
 
 Action <code>cf7vk_channel_sendout</code>
-Current shell action fired when a channel is asked to send an outgoing notification.
+Fires when a channel starts processing a prepared outgoing message, before bot and chat availability checks.
+Arguments: <code>$channel</code> (iTRON\cf7Vk\Channel), <code>$message</code> (string), <code>$context</code> (array).
 
 Action <code>cf7vk_delivery_exception</code>
-Fired when delivery fails or delivery prerequisites cannot be resolved for a target channel/chat.
+Fires when delivery relation lookup, chat status lookup, or VK transport delivery fails. The <code>$chat</code> argument can be null for relation lookup errors.
+Arguments: <code>$exception</code> (Throwable), <code>$channel</code> (iTRON\cf7Vk\Channel), <code>$chat</code> (?iTRON\cf7Vk\Chat), <code>$context</code> (array).
 
 == Source Code and Build Tools ==
 
