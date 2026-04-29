@@ -1,4 +1,4 @@
-name: Build zip
+name: release
 
 on:
   release:
@@ -9,10 +9,11 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     env:
-      WPORG_USERNAME: ${{ secrets.WPORG_USERNAME }}
+      WPORG_PLUGIN_SLUG: ${{ vars.WPORG_PLUGIN_SLUG }}
+      WPORG_USERNAME: ${{ vars.WPORG_USERNAME }}
       WPORG_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
 
     steps:
@@ -30,26 +31,33 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Build plugin package
+      - name: Validate release configuration
+        run: |
+          if [ -z "${WPORG_PLUGIN_SLUG}" ]; then
+            echo "Repository variable WPORG_PLUGIN_SLUG is required." >&2
+            exit 1
+          fi
+
+      - name: Build release package
         run: |
           BUILD_MODE=$([ "${{ github.event.release.prerelease }}" = "true" ] && echo "prerelease" || echo "stable")
-          ./install/build-plugin-package.sh "${BUILD_MODE}" "${GITHUB_WORKSPACE}/build-artifacts"
+          ./install/build-plugin-package.sh "${BUILD_MODE}" "${GITHUB_WORKSPACE}/build-artifacts" "${WPORG_PLUGIN_SLUG}"
 
       - name: Prepare version without "v"
         id: clean_version
         run: echo "value=${{ github.event.release.tag_name }}" | sed -E 's/^value=(v|version)-?/value=/' >> $GITHUB_OUTPUT
 
-      - name: Upload Release Artifact
+      - name: Upload release artifact
         uses: AButler/upload-release-assets@v3.0
         with:
-          files: ./build-artifacts/message-bridge-for-contact-form-7-and-vk-${{ steps.clean_version.outputs.value }}.zip
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          files: ./build-artifacts/${{ env.WPORG_PLUGIN_SLUG }}-${{ steps.clean_version.outputs.value }}.zip
+          repo-token: ${{ github.token }}
 
       - name: Set target branch
         id: branch
         run: echo "branch_name=$([ '${{ github.event.release.prerelease }}' == 'true' ] && echo 'plugin-dist' || echo 'stable')" >> "$GITHUB_OUTPUT"
 
-      - name: Push to release branch
+      - name: Push to distribution branch
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -58,7 +66,7 @@ jobs:
           export DIST_WORKTREE=$(mktemp -d)
           export TARGET_BRANCH=${{ steps.branch.outputs.branch_name }}
 
-          cp -r build-artifacts/message-bridge-for-contact-form-7-and-vk/. "$TEMP_DIR/"
+          cp -r "build-artifacts/${WPORG_PLUGIN_SLUG}/." "$TEMP_DIR/"
 
           if git ls-remote --exit-code --heads origin "$TARGET_BRANCH" >/dev/null 2>&1; then
             git fetch origin "$TARGET_BRANCH"
@@ -79,15 +87,13 @@ jobs:
           git add .
           git commit -m "Update plugin build from release ${{ github.event.release.tag_name }}" || echo "No changes to commit"
           git push origin HEAD:"$TARGET_BRANCH"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Deploy to WordPress.org (production only)
-        if: ${{ github.event.release.prerelease == false && env.WPORG_USERNAME != '' && env.WPORG_PASSWORD != '' }}
+        if: ${{ github.event.release.prerelease == false && env.WPORG_PLUGIN_SLUG != '' && env.WPORG_USERNAME != '' && env.WPORG_PASSWORD != '' }}
         uses: 10up/action-wordpress-plugin-deploy@stable
         env:
           SVN_USERNAME: ${{ env.WPORG_USERNAME }}
           SVN_PASSWORD: ${{ env.WPORG_PASSWORD }}
-          BUILD_DIR: ./build-artifacts/message-bridge-for-contact-form-7-and-vk
-          SLUG: message-bridge-for-contact-form-7-and-vk
+          BUILD_DIR: ./build-artifacts/${{ env.WPORG_PLUGIN_SLUG }}
+          SLUG: ${{ env.WPORG_PLUGIN_SLUG }}
           VERSION: ${{ steps.clean_version.outputs.value }}

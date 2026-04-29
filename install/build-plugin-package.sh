@@ -6,6 +6,7 @@ MODE="${1:-stable}"
 OUTPUT_DIR="${2:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/build/${MODE}}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLUGIN_FILE="${ROOT_DIR}/plugin-dir/cf7-vk.php"
+PLUGIN_SLUG="${3:-${PLUGIN_SLUG:-}}"
 PLUGIN_VERSION="$(
 	awk '
 		/^[[:space:]]*\*[[:space:]]+Version:/ {
@@ -15,8 +16,19 @@ PLUGIN_VERSION="$(
 		}
 	' "${PLUGIN_FILE}"
 )"
-PLUGIN_DIR="${OUTPUT_DIR}/message-bridge-for-contact-form-7-and-vk"
-ZIP_FILE="${OUTPUT_DIR}/message-bridge-for-contact-form-7-and-vk-${PLUGIN_VERSION}.zip"
+if [ -z "${PLUGIN_SLUG}" ]; then
+	PLUGIN_SLUG="$(
+		awk '
+			/^[[:space:]]*\*[[:space:]]+Text Domain:/ {
+				sub(/^[[:space:]]*\*[[:space:]]+Text Domain:[[:space:]]*/, "");
+				print $1;
+				exit;
+			}
+		' "${PLUGIN_FILE}"
+	)"
+fi
+PLUGIN_DIR="${OUTPUT_DIR}/${PLUGIN_SLUG}"
+ZIP_FILE="${OUTPUT_DIR}/${PLUGIN_SLUG}-${PLUGIN_VERSION}.zip"
 OVERLAY_FILE="${ROOT_DIR}/install/release-assets/prerelease/lib/Distribution/GitHubReleaseChannel.php"
 
 case "${MODE}" in
@@ -35,6 +47,11 @@ command -v zip >/dev/null 2>&1 || {
 
 if [ -z "${PLUGIN_VERSION}" ]; then
 	echo "Unable to detect plugin version from ${PLUGIN_FILE}." >&2
+	exit 1
+fi
+
+if [ -z "${PLUGIN_SLUG}" ]; then
+	echo "Unable to detect plugin slug from ${PLUGIN_FILE}." >&2
 	exit 1
 fi
 
@@ -130,7 +147,7 @@ find "${PLUGIN_DIR}" -depth -type d -name '.*' -exec rm -rf {} +
 
 (
 	cd "${OUTPUT_DIR}"
-	zip -rq "$(basename "${ZIP_FILE}")" message-bridge-for-contact-form-7-and-vk
+	zip -rq "$(basename "${ZIP_FILE}")" "${PLUGIN_SLUG}"
 )
 
 echo "Built ${MODE} package directory: ${PLUGIN_DIR}"
