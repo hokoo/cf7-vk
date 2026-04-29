@@ -91,7 +91,9 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 == Changelog ==
 
 = 0.1.4 =
-* Added PHP constant helpers for VK credentials, expanded setup documentation, and moved release workflow settings to repository variables.
+* Added PHP constant support and admin copy helpers for VK access tokens and group IDs.
+* Expanded VK community setup documentation and corrected the documented delivery hooks.
+* Added a WordPress Playground blueprint for installing Contact Form 7 and the latest stable plugin build.
 
 = 0.1.3 =
 * Clarified the WP Data Logger integration hook and aligned the localized admin script object with the plugin prefix.
@@ -111,11 +113,3 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 
 == Upgrade Notice ==
 
-= 0.1.4 =
-Credential setup and release workflow maintenance updates.
-
-= 0.1.3 =
-Prefix compliance updates for the WordPress.org review process.
-
-= 0.1.2 =
-Review fixes for bundled dependencies and REST endpoint permissions.
