@@ -5,6 +5,8 @@ import {copyWithTooltip} from '../utils/main';
 import {getChatStatus, getToggleButtonLabel} from '../utils/chatStatus';
 import {formatBotTitle} from '../utils/botTitle';
 
+const buildPhpConstSnippet = (constName, placeholder) => `const ${constName} = '${placeholder}';`;
+
 const BotView = ({
     bot,
     form,
@@ -31,10 +33,17 @@ const BotView = ({
     const visibleBotTitle = formatBotTitle(botTitle);
     const authCommand = form.authCommand.trim() || 'start';
     const emptySecret = cf7vkData?.phrases?.emptySecret || wp.i18n.__( '[empty]', 'message-bridge-for-contact-form-7-and-vk' );
-    const hasTokenValue = Boolean(form.accessToken.trim()) && form.accessToken !== emptySecret;
-    const tokenDisplay = bot.isAccessTokenDefinedByConst
-        ? bot.accessTokenConst
-        : (hasTokenValue ? `***${form.accessToken.slice(-4)}` : emptySecret);
+    const phpConstDefinedLabel = wp.i18n.__( 'Defined by PHP constant', 'message-bridge-for-contact-form-7-and-vk' );
+    const displayedTokenValue = bot.isAccessTokenDefinedByConst ? (bot.accessToken || '') : form.accessToken;
+    const hasTokenValue = Boolean(displayedTokenValue.trim()) && displayedTokenValue !== emptySecret;
+    const tokenDisplay = hasTokenValue ? `***${displayedTokenValue.slice(-4)}` : emptySecret;
+    const accessTokenConstSnippet = bot.accessTokenConst
+        ? buildPhpConstSnippet(bot.accessTokenConst, 'your_access_token')
+        : '';
+    const groupIdConstSnippet = bot.groupIdConst
+        ? buildPhpConstSnippet(bot.groupIdConst, 'your_group_id')
+        : '';
+    const groupIdInputId = `bot-${bot.id}-group-id`;
 
     return (
         <div className={`entity-container bot ${statusClass}`} id={`bot-${bot.id}`}>
@@ -88,11 +97,23 @@ const BotView = ({
                             className={`show-token${bot.isAccessTokenDefinedByConst ? ' const' : ''}`}
                             onClick={startEditingToken}
                             title={bot.isAccessTokenDefinedByConst
-                                ? wp.i18n.__( 'Defined by PHP constant', 'message-bridge-for-contact-form-7-and-vk' )
+                                ? phpConstDefinedLabel
                                 : wp.i18n.__( 'Click to edit token', 'message-bridge-for-contact-form-7-and-vk' )}
                         >
-                            {wp.i18n.__( 'token', 'message-bridge-for-contact-form-7-and-vk' )}: <span className={`token-value${hasTokenValue || bot.isAccessTokenDefinedByConst ? '' : ' empty'}`}>{isEditingToken ? '' : tokenDisplay}</span>
+                            {wp.i18n.__( 'token', 'message-bridge-for-contact-form-7-and-vk' )}: <span className={`token-value${hasTokenValue ? '' : ' empty'}`}>{isEditingToken ? '' : tokenDisplay}</span>
                         </div>
+
+                        {!isEditingToken && !bot.isAccessTokenDefinedByConst && accessTokenConstSnippet ? (
+                            <button
+                                className="php-const-hint copyable"
+                                type="button"
+                                title={wp.i18n.__( 'Copy PHP code for the access token constant', 'message-bridge-for-contact-form-7-and-vk' )}
+                                onClick={(event) => copyWithTooltip(event.currentTarget, accessTokenConstSnippet)}
+                                disabled={saving}
+                            >
+                                {wp.i18n.__( 'Copy PHP const', 'message-bridge-for-contact-form-7-and-vk' )}
+                            </button>
+                        ) : null}
 
                         {isEditingToken ? (
                             <input
@@ -118,10 +139,35 @@ const BotView = ({
 
                 <div className="frame bot-fields">
                     <div className="bot-field-grid">
-                        <label className="bot-field">
-                            <span>{wp.i18n.__( 'Group ID', 'message-bridge-for-contact-form-7-and-vk' )}</span>
-                            <input value={form.groupId} onChange={updateField('groupId')} onBlur={handleFieldBlur} disabled={saving} />
-                        </label>
+                        <div
+                            className={`bot-field${bot.isGroupIdDefinedByConst ? ' is-const' : ''}`}
+                            title={bot.isGroupIdDefinedByConst ? phpConstDefinedLabel : undefined}
+                        >
+                            <span className="bot-field-heading">
+                                <label htmlFor={groupIdInputId}>{wp.i18n.__( 'Group ID', 'message-bridge-for-contact-form-7-and-vk' )}</label>
+                                {!bot.isGroupIdDefinedByConst && groupIdConstSnippet ? (
+                                    <button
+                                        className="bot-field-const-copy copyable"
+                                        type="button"
+                                        title={wp.i18n.__( 'Copy PHP code for the Group ID constant', 'message-bridge-for-contact-form-7-and-vk' )}
+                                        onClick={(event) => copyWithTooltip(event.currentTarget, groupIdConstSnippet)}
+                                        disabled={saving}
+                                    >
+                                        {wp.i18n.__( 'Copy PHP const', 'message-bridge-for-contact-form-7-and-vk' )}
+                                    </button>
+                                ) : null}
+                            </span>
+                            <input
+                                id={groupIdInputId}
+                                value={form.groupId}
+                                onChange={updateField('groupId')}
+                                onBlur={handleFieldBlur}
+                                disabled={saving || bot.isGroupIdDefinedByConst}
+                                title={bot.isGroupIdDefinedByConst
+                                    ? phpConstDefinedLabel
+                                    : undefined}
+                            />
+                        </div>
                     </div>
                 </div>
 
