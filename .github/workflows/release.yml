@@ -94,6 +94,7 @@ jobs:
         env:
           SVN_USERNAME: ${{ env.WPORG_USERNAME }}
           SVN_PASSWORD: ${{ env.WPORG_PASSWORD }}
+          ASSETS_DIR: ./.wordpress-org
           BUILD_DIR: ./build-artifacts/${{ env.WPORG_PLUGIN_SLUG }}
           SLUG: ${{ env.WPORG_PLUGIN_SLUG }}
           VERSION: ${{ steps.clean_version.outputs.value }}
