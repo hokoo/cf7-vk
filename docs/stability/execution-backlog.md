@@ -31,6 +31,7 @@ Execution status as of 2026-08-31:
 - `T5`: completed; migration runner state, locks, retry, self-heal, and admin recovery guards are implemented and covered.
 - `T6`: completed; migration/lifecycle characterization, relation fixtures, damaged fixture repair evidence, and all published/tagged baselines are covered.
 - `T7`: completed; VK API and Long Poll HTTP calls are isolated behind a gateway contract, normalized delivery result, VK-aware redactor, and recording fake test harness.
+- `T8`: completed; `Logger::write()` centrally redacts sensitive keys, VK tokens, Long Poll keys, emails, phones, and custom filter patterns before hook dispatch and database storage.
 
 Completed first execution batch after approval:
 
@@ -39,7 +40,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T8. Add Central Redaction For Logs, Transport Errors, And Evidence`
+- `T9. Add Transactional VK Credential Update Contract`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -651,7 +652,7 @@ Notes/Risks:
 
 ## T8. Add Central Redaction For Logs, Transport Errors, And Evidence
 
-Status: todo
+Status: completed
 
 Goal: prevent VK secrets and user-submitted private data from leaking into logs or test artifacts.
 
@@ -707,10 +708,24 @@ Dependencies:
 Notes/Risks:
 
 - Be careful not to redact every numeric ID in internal diagnostics before tests can distinguish expected recipients. Evidence can store hashed/bucketed IDs instead.
+- Implemented files:
+  - `plugin-dir/lib/LogRedactor.php`;
+  - `plugin-dir/tests/LoggerTest.php`;
+  - updates to `plugin-dir/lib/Logger.php` and `tests/stability/wp-state-snapshot.php`.
+- `Logger::write()` now redacts data and title before the `logger` integration hook and before insertion into `cf7vk_log`.
+- Stability state snapshots reuse `LogRedactor` when the production class is available in the WP-CLI process.
+- Verification evidence:
+  - `php -l plugin-dir/lib/LogRedactor.php plugin-dir/lib/Logger.php plugin-dir/tests/LoggerTest.php tests/stability/wp-state-snapshot.php` passed.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 77 tests, 0 failures, 1 PHP 8.1 dependency-heavy skip.
+  - `git diff --check` passed.
+  - `./scripts/build-release-zip.sh` passed after T8.
+  - `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed after T8.
+  - Current candidate ZIP SHA-256 is `d3141e69aa1ab2979136cf0b5b89e831c907ce5d596821ca8f6321c5f311f8a6`; size is `254959` bytes.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T162744Z-53169.70zzTR/results/summary.json`, 25 steps, 25 passed, 0 skipped, 0 failures.
 
 ## T9. Add Transactional VK Credential Update Contract
 
-Status: waiting_dependency
+Status: todo
 
 Goal: avoid replacing a working VK bot configuration with unvalidated group/token/API version values.
 

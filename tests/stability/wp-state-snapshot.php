@@ -288,26 +288,29 @@ $fingerprint_source = [
 	'migration'   => $migration,
 ];
 
-echo wp_json_encode(
-	[
-		'captured_at_gmt' => gmdate( 'c' ),
-		'wordpress'       => [
-			'version' => get_bloginfo( 'version' ),
-			'url'     => home_url(),
-		],
-		'php_version'     => PHP_VERSION,
-		'plugin'          => $plugin,
-		'active_plugins'  => array_values( array_map( 'strval', (array) get_option( 'active_plugins', [] ) ) ),
-		'cron'            => $cron,
-		'options'         => $options,
-		'fixture_expectations' => $fixture_expectations,
-		'post_counts'     => $post_counts,
-		'tables'          => $tables,
-		'relations'       => $relations,
-		'migration'       => $migration,
-		'fingerprints'    => [
-			'lifecycle' => hash( 'sha256', wp_json_encode( $fingerprint_source ) ),
-		],
+$snapshot = [
+	'captured_at_gmt' => gmdate( 'c' ),
+	'wordpress'       => [
+		'version' => get_bloginfo( 'version' ),
+		'url'     => home_url(),
 	],
-	JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-);
+	'php_version'     => PHP_VERSION,
+	'plugin'          => $plugin,
+	'active_plugins'  => array_values( array_map( 'strval', (array) get_option( 'active_plugins', [] ) ) ),
+	'cron'            => $cron,
+	'options'         => $options,
+	'fixture_expectations' => $fixture_expectations,
+	'post_counts'     => $post_counts,
+	'tables'          => $tables,
+	'relations'       => $relations,
+	'migration'       => $migration,
+	'fingerprints'    => [
+		'lifecycle' => hash( 'sha256', wp_json_encode( $fingerprint_source ) ),
+	],
+];
+
+if ( class_exists( '\iTRON\cf7Vk\LogRedactor' ) ) {
+	$snapshot = \iTRON\cf7Vk\LogRedactor::redact( $snapshot );
+}
+
+echo wp_json_encode( $snapshot, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );

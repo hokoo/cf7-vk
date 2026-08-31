@@ -41,7 +41,8 @@ Implementation progress as of 2026-08-31:
 - `T5. Harden Migration Runner State, Locks, And Recovery`: completed.
 - `T6. Add Migration And Lifecycle Characterization Evidence`: completed.
 - `T7. Introduce VK Gateway Contract And Recording Fake`: completed.
-- Next execution-ready task: `T8. Add Central Redaction For Logs, Transport Errors, And Evidence`.
+- `T8. Add Central Redaction For Logs, Transport Errors, And Evidence`: completed.
+- Next execution-ready task: `T9. Add Transactional VK Credential Update Contract`.
 
 ## Reference Stability Scope
 
@@ -230,7 +231,7 @@ Status as of 2026-08-31:
 
 - partially mitigated by T4 for log retention and row cap;
 - partially mitigated by T7 for VK transport result descriptions and failure payloads;
-- central log and evidence redaction remains open and should be handled by T8 before admin/delivery evidence expands.
+- mitigated by T8 for central `Logger::write()` payload/title redaction and stability state snapshot redaction.
 
 ### F6. VK transport is direct and exception-driven
 
