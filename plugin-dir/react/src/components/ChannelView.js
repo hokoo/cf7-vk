@@ -29,13 +29,18 @@ const ChannelView = ({
     dataAvailability = {forms: 'ready', bots: 'ready', chats: 'ready'}
 }) => {
     return (
-        <div className={`entity-container channel${renderChannelClasses()}${saving ? ' saving' : ''}`} id={`channel-${channel.id}`}>
+        <div
+            className={`entity-container channel${renderChannelClasses()}${saving ? ' saving' : ''}`}
+            data-testid={`cf7vk-channel-${channel.id}`}
+            id={`channel-${channel.id}`}
+        >
             <div className="entity-wrapper channel-wrapper">
                 <div className="frame channel-title-wrapper">
                     <div className="columns">
                         <div className="column title-column">
                             <input
                                 className="edit-title"
+                                data-testid={`cf7vk-channel-title-input-${channel.id}`}
                                 type="text"
                                 value={titleValue}
                                 onChange={handleTitleChange}
@@ -60,9 +65,12 @@ const ChannelView = ({
                                     <span>{botForChannel.title}</span>
                                     <button
                                         className="detach-button detach-bot-button crux"
+                                        data-testid={`cf7vk-channel-${channel.id}-remove-bot`}
                                         type="button"
                                         onClick={handleRemoveBot}
                                         disabled={saving}
+                                        aria-label={wp.i18n.__( 'Remove bot from channel', 'message-bridge-for-contact-form-7-and-vk' )}
+                                        title={wp.i18n.__( 'Remove bot from channel', 'message-bridge-for-contact-form-7-and-vk' )}
                                     />
                                 </div>
                             ) : (
@@ -71,6 +79,9 @@ const ChannelView = ({
                                         <Select
                                             className="select-picker bot-picker"
                                             classNamePrefix="select-picker"
+                                            inputId={`cf7vk-channel-bot-picker-${channel.id}`}
+                                            instanceId={`cf7vk-channel-bot-picker-${channel.id}`}
+                                            data-testid={`cf7vk-channel-${channel.id}-bot-picker`}
                                             options={availableBots.map((bot) => ({
                                                 value: bot.id,
                                                 label: bot.title
@@ -107,7 +118,18 @@ const ChannelView = ({
                                 <div
                                     key={chat.id}
                                     className={`chat chat-${chat.id} ${chat.status.toLowerCase()}`}
+                                    data-testid={`cf7vk-channel-${channel.id}-chat-${chat.id}`}
+                                    role="button"
+                                    tabIndex={0}
                                     onClick={() => !saving && handleToggleChat(chat.id, chat.status)}
+                                    onKeyDown={(event) => {
+                                        if (saving || !['Enter', ' '].includes(event.key)) {
+                                            return;
+                                        }
+
+                                        event.preventDefault();
+                                        handleToggleChat(chat.id, chat.status);
+                                    }}
                                     aria-disabled={saving}
                                     title={getToggleButtonLabel(chat.status)}
                                 >
@@ -123,6 +145,7 @@ const ChannelView = ({
                 <div className="frame forms">
                     <button
                         className="add-button add-form-button"
+                        data-testid={`cf7vk-channel-${channel.id}-add-form`}
                         type="button"
                         onClick={handleAddForm}
                         disabled={'ready' !== dataAvailability.forms || saving}
@@ -144,6 +167,9 @@ const ChannelView = ({
                         <Select
                             className="select-picker form-picker"
                             classNamePrefix="select-picker"
+                            inputId={`cf7vk-channel-form-picker-${channel.id}`}
+                            instanceId={`cf7vk-channel-form-picker-${channel.id}`}
+                            data-testid={`cf7vk-channel-${channel.id}-form-picker`}
                             options={availableForms.map((form) => ({
                                 value: form.id,
                                 label: form.title
@@ -159,13 +185,16 @@ const ChannelView = ({
                     {'ready' === dataAvailability.forms && (formsForChannel.length > 0 ? (
                         <ul className={`form-list ${showFormSelector ? 'show-selector' : ''}`}>
                             {formsForChannel.map((form) => (
-                                <li key={form.id}>
+                                <li key={form.id} data-testid={`cf7vk-channel-${channel.id}-form-${form.id}`}>
                                     {form.title}
                                     <button
                                         className="detach-button crux detach-form-button"
+                                        data-testid={`cf7vk-channel-${channel.id}-remove-form-${form.id}`}
                                         type="button"
                                         onClick={() => handleRemoveForm(form.id)}
                                         disabled={saving}
+                                        aria-label={wp.i18n.__( 'Remove form from channel', 'message-bridge-for-contact-form-7-and-vk' )}
+                                        title={wp.i18n.__( 'Remove form from channel', 'message-bridge-for-contact-form-7-and-vk' )}
                                     />
                                 </li>
                             ))}
@@ -178,6 +207,7 @@ const ChannelView = ({
                 <div className="frame status-bar">
                     <button
                         className="remove-channel-button"
+                        data-testid={`cf7vk-remove-channel-${channel.id}`}
                         type="button"
                         onClick={deleteChannel}
                         disabled={saving}

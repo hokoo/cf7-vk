@@ -37,7 +37,9 @@ Execution status as of 2026-08-31:
 - `T11`: completed; CF7 delivery now returns per-channel/per-recipient structured results, continues later active chats after one VK failure, keeps CF7 success independent from VK transport failure, and emits sanitized `cf7vk_deliveries_completed` summaries.
 - `T12`: completed; React REST requests now use typed sanitized `ApiError` diagnostics, paginated bot/chat/channel and CF7 form collection loading, duplicate-ID protection, fail-closed later-page errors, and permalink-safe force-delete URLs.
 - `T13`: completed; admin bootstrap now keeps independent resource state, preserves loaded sections across unrelated REST failures, exposes targeted load errors, retries only failed resources, disables dependency-gated controls, and wraps the settings app in an error boundary.
-- `T14`: todo; unblocked by completed `T12`, `T13`, and `T9`.
+- `T14`: completed; admin mutations now have focused component coverage, stable browser selectors, safer failed delete/relation handling, channel removal relation cleanup evidence, preserved failed-save snapshots, and polling retry feedback cleanup.
+- `T15`: todo; unblocked by completed `T13`.
+- `T16`: todo; unblocked by completed `T12` and `T13`.
 
 Completed first execution batch after approval:
 
@@ -46,7 +48,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T14. Harden Admin Mutation Sequencing, State Safety, And Selectors`
+- `T15. Scope Admin Styles And Notice Policy`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -1072,7 +1074,7 @@ Notes/Risks:
 
 ## T14. Harden Admin Mutation Sequencing, State Safety, And Selectors
 
-Status: todo
+Status: completed
 
 Goal: make admin CRUD and relation mutations safe under failures and testable in browser E2E.
 
@@ -1125,10 +1127,40 @@ Dependencies:
 Notes/Risks:
 
 - Selector additions should be minimal and should not change production behavior.
+- Implemented files:
+  - updates to `plugin-dir/react/src/App.test.js`;
+  - updates to `plugin-dir/react/src/components/Bot.js`;
+  - updates to `plugin-dir/react/src/components/Bot.test.js`;
+  - updates to `plugin-dir/react/src/components/BotView.js`;
+  - `plugin-dir/react/src/components/BotView.test.js`;
+  - updates to `plugin-dir/react/src/components/Channel.js`;
+  - `plugin-dir/react/src/components/Channel.test.js`;
+  - updates to `plugin-dir/react/src/components/ChannelView.js`;
+  - `plugin-dir/react/src/components/ChannelView.test.js`;
+  - updates to `plugin-dir/react/src/components/NewBot.js`;
+  - `plugin-dir/react/src/components/NewBot.test.js`;
+  - updates to `plugin-dir/react/src/components/NewChannel.js`;
+  - `plugin-dir/react/src/components/NewChannel.test.js`.
+- Bot credential save failure now leaves the card editable, does not call the saved-state callback, and keeps the previous saved snapshot available for inline cancel recovery.
+- Bot deletion now catches failed REST deletes, leaves the bot card visible, re-enables actions, and shows the REST error message.
+- Polling feedback is tagged as polling-sourced and is cleared after the next successful `fetch_updates` retry, so transient timeouts do not become persistent card errors.
+- Channel delete success calls `onChannelRemoved()` only after REST delete success; failed delete/relation mutations set a local error and do not refresh stale successful relation state.
+- App-level channel removal tests prove bot-channel, chat-channel, and form-channel local relation arrays are cleaned while unrelated channel relations are preserved.
+- Stable `data-testid` selectors and accessible labels were added for bot/channel roots, creation, deletion, token/group/title controls, channel relation controls, and chat/form rows.
+- Verification evidence:
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 9 suites, 45 tests.
+  - `npm --prefix plugin-dir/react run build` passed.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 100 tests, 0 failures, 10 PHP 8.1 dependency-heavy skips.
+  - `git diff --check` passed.
+  - `./scripts/build-release-zip.sh` and `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed.
+  - Current candidate ZIP SHA-256 is `808c2193a68414953f08c4b459810204cc4cd701621ddf64c91b3c435a96f81c`; size is `261725` bytes.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T180242Z-23582.wTrLPH/results/summary.json`, 26 steps, 26 passed, 0 skipped, 0 failures.
+  - `tests/stability/e1-smoke-matrix.sh` passed: summary `/tmp/cf7vk-e1-20260831T180335Z-26316.pXSBhn/results/summary.json`, 166 steps, 166 passed, 0 skipped, 0 failures.
+- Known build-chain noise remains from Create React App and React test tooling: dependency deprecation warnings, the undeclared `@babel/plugin-proposal-private-property-in-object` warning, Browserslist currency warnings, and ReactDOMTestUtils `act` warnings. These are tracked by T16.
 
 ## T15. Scope Admin Styles And Notice Policy
 
-Status: waiting_dependency
+Status: todo
 
 Goal: keep the plugin admin page usable without leaking styles into unrelated WordPress admin UI.
 
@@ -1175,7 +1207,7 @@ Notes/Risks:
 
 ## T16. Migrate React Build To WordPress Scripts
 
-Status: waiting_dependency
+Status: todo
 
 Goal: align the admin asset build with the hardened Telegram release path and reduce CRA-specific release fragility.
 

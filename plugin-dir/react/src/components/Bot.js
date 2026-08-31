@@ -248,12 +248,15 @@ const Bot = ({
                 if (hasTransientError) {
                     setFeedback({
                         type: 'error',
+                        source: 'polling',
                         message: result?.error?.message || wp.i18n.__( 'VK updates could not be checked.', 'message-bridge-for-contact-form-7-and-vk' )
                     });
                     await refreshBotsRef.current();
                     scheduleNextPoll(RETRY_DELAY_MS);
                     return;
                 }
+
+                setFeedback((current) => 'polling' === current?.source ? null : current);
 
                 if (hasLinkedDialogChanges) {
                     await refreshBotRuntimeRef.current();
@@ -271,6 +274,7 @@ const Bot = ({
 
                 setFeedback({
                     type: 'error',
+                    source: 'polling',
                     message: error.message
                 });
                 await refreshBotsRef.current();
@@ -501,6 +505,11 @@ const Bot = ({
             await apiDeleteBot(bot.id);
             removed = true;
             onBotRemoved(bot.id);
+        } catch (error) {
+            setFeedback({
+                type: 'error',
+                message: error.message || wp.i18n.__( 'Failed to remove bot', 'message-bridge-for-contact-form-7-and-vk' )
+            });
         } finally {
             if (!removed) {
                 setSaving(false);

@@ -1,6 +1,7 @@
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import Bot from './Bot';
 import {
+    apiDeleteBot,
     apiFetchUpdates,
     apiPingBot,
     apiSaveBot,
@@ -55,6 +56,17 @@ const flushTimersAndPromises = async () => {
     });
 };
 
+const createDeferred = () => {
+    let resolve;
+    let reject;
+    const promise = new Promise((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+
+    return {promise, resolve, reject};
+};
+
 beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
@@ -90,6 +102,44 @@ test('shows credential validation failure without saving stale bot state', async
     expect(apiSaveBot).not.toHaveBeenCalled();
     expect(onBotSaved).not.toHaveBeenCalled();
     expect(await screen.findByText('Invalid VK token')).toBeInTheDocument();
+});
+
+test('failed credential save exits saving state and preserves the last saved token snapshot', async () => {
+    const save = createDeferred();
+    apiSaveBotCredentials.mockReturnValueOnce(save.promise);
+    const onBotSaved = jest.fn();
+    renderBot(
+        {
+            groupId: '1001',
+            accessToken: 'original-secret-7777',
+            isAccessTokenEmpty: false
+        },
+        {onBotSaved}
+    );
+
+    fireEvent.change(screen.getByLabelText('Group ID'), {target: {value: '2002'}});
+    fireEvent.click(screen.getByTestId('cf7vk-bot-token-display-1'));
+    fireEvent.change(screen.getByTestId('cf7vk-bot-token-input-1'), {target: {value: 'bad-token-9999'}});
+    fireEvent.blur(screen.getByTestId('cf7vk-bot-token-input-1'));
+
+    await flushTimersAndPromises();
+
+    expect(screen.getByTestId('cf7vk-bot-group-id-1')).toBeDisabled();
+
+    await act(async () => {
+        save.reject(new Error('Invalid VK token'));
+        await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('cf7vk-bot-group-id-1')).toBeEnabled();
+    expect(onBotSaved).not.toHaveBeenCalled();
+    expect(await screen.findByText('Invalid VK token')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('cf7vk-bot-token-display-1'));
+    expect(screen.getByTestId('cf7vk-bot-token-input-1')).toHaveValue('bad-token-9999');
+    fireEvent.keyDown(screen.getByTestId('cf7vk-bot-token-input-1'), {key: 'Escape'});
+
+    expect(screen.getByTestId('cf7vk-bot-token-display-1')).toHaveTextContent('***7777');
 });
 
 test('successful credential save uses persisted response and refreshes reset relations', async () => {
@@ -166,4 +216,63 @@ test('polling displays structured transient fetch errors', async () => {
 
     expect(await screen.findByText('VK timeout')).toBeInTheDocument();
     expect(refreshBots).toHaveBeenCalled();
+});
+
+test('polling clears a transient fetch error after the next successful retry', async () => {
+    apiPingBot.mockResolvedValue({longPollReady: true});
+    apiFetchUpdates
+        .mockResolvedValueOnce({
+            locked: false,
+            transientError: true,
+            error: {
+                message: 'VK timeout'
+            }
+        })
+        .mockResolvedValue({
+            locked: false,
+            updates: [],
+            hasNewChats: false,
+            hasNewConnections: false
+        });
+    renderBot({
+        groupId: '1001',
+        accessToken: 'old-token',
+        isAccessTokenEmpty: false,
+        lastStatus: 'online'
+    });
+
+    await act(async () => {
+        await Promise.resolve();
+    });
+    await flushTimersAndPromises();
+
+    expect(await screen.findByText('VK timeout')).toBeInTheDocument();
+
+    await flushTimersAndPromises();
+
+    expect(screen.queryByText('VK timeout')).not.toBeInTheDocument();
+});
+
+test('failed bot deletion keeps the card visible and re-enables actions', async () => {
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
+    const deletion = createDeferred();
+    apiDeleteBot.mockReturnValueOnce(deletion.promise);
+    const onBotRemoved = jest.fn();
+    renderBot({}, {onBotRemoved});
+
+    fireEvent.click(screen.getByTestId('cf7vk-remove-bot-1'));
+
+    expect(screen.getByTestId('cf7vk-remove-bot-1')).toBeDisabled();
+
+    await act(async () => {
+        deletion.reject(new Error('Delete failed'));
+        await Promise.resolve();
+    });
+
+    expect(onBotRemoved).not.toHaveBeenCalled();
+    expect(screen.getByTestId('cf7vk-bot-1')).toBeInTheDocument();
+    expect(screen.getByTestId('cf7vk-remove-bot-1')).toBeEnabled();
+    expect(screen.getByText('Delete failed')).toBeInTheDocument();
+
+    confirm.mockRestore();
 });

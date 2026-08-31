@@ -21,7 +21,12 @@ const NewChannel = ({onCreated, disabled = false}) => {
     };
 
     return (
-        <button className="add-button add-channel-button" onClick={handleCreateChannel} disabled={saving || disabled}>
+        <button
+            className="add-button add-channel-button"
+            data-testid="cf7vk-create-channel"
+            onClick={handleCreateChannel}
+            disabled={saving || disabled}
+        >
             {wp.i18n.__( 'Create Channel', 'message-bridge-for-contact-form-7-and-vk' )}
         </button>
     );

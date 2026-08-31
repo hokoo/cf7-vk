@@ -24,7 +24,12 @@ const NewBot = ({onCreated, disabled = false}) => {
     };
 
     return (
-        <button className="add-button add-bot-button" onClick={handleCreateBot} disabled={saving || disabled}>
+        <button
+            className="add-button add-bot-button"
+            data-testid="cf7vk-create-bot"
+            onClick={handleCreateBot}
+            disabled={saving || disabled}
+        >
             {wp.i18n.__( 'Create Bot', 'message-bridge-for-contact-form-7-and-vk' )}
         </button>
     );

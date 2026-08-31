@@ -47,7 +47,11 @@ const BotView = ({
     const groupIdInputId = `bot-${bot.id}-group-id`;
 
     return (
-        <div className={`entity-container bot ${statusClass}`} id={`bot-${bot.id}`}>
+        <div
+            className={`entity-container bot ${statusClass}`}
+            data-testid={`cf7vk-bot-${bot.id}`}
+            id={`bot-${bot.id}`}
+        >
             <div className={`entity-wrapper bot-wrapper ${saving ? 'saving' : ''}`}>
                 <div className="frame bot-summary">
                     <div className="bot-title">
@@ -96,6 +100,7 @@ const BotView = ({
                     <div className="bot-token">
                         <div
                             className={`show-token${bot.isAccessTokenDefinedByConst ? ' const' : ''}`}
+                            data-testid={`cf7vk-bot-token-display-${bot.id}`}
                             onClick={startEditingToken}
                             title={bot.isAccessTokenDefinedByConst
                                 ? phpConstDefinedLabel
@@ -119,6 +124,7 @@ const BotView = ({
                         {isEditingToken ? (
                             <input
                                 className="edit-token"
+                                data-testid={`cf7vk-bot-token-input-${bot.id}`}
                                 type="text"
                                 value={form.accessToken}
                                 onChange={updateField('accessToken')}
@@ -160,6 +166,7 @@ const BotView = ({
                             </span>
                             <input
                                 id={groupIdInputId}
+                                data-testid={`cf7vk-bot-group-id-${bot.id}`}
                                 value={form.groupId}
                                 onChange={updateField('groupId')}
                                 onBlur={handleFieldBlur}
@@ -190,10 +197,15 @@ const BotView = ({
                                 const title = chat.title?.rendered || chat.displayName || `#${chat.id}`;
 
                                 return (
-                                    <li key={chat.id} className={`chat-item ${status.toLowerCase()}`}>
+                                    <li
+                                        key={chat.id}
+                                        className={`chat-item ${status.toLowerCase()}`}
+                                        data-testid={`cf7vk-bot-${bot.id}-chat-${chat.id}`}
+                                    >
                                         <span className="chat-name" title={status}>{title}</span>
                                         <span
                                             className="action toggle-status"
+                                            data-testid={`cf7vk-bot-${bot.id}-chat-${chat.id}-toggle`}
                                             onClick={() => {
                                                 if ('Pending' === status) {
                                                     handleActivatePendingChat(chat.id);
@@ -207,6 +219,7 @@ const BotView = ({
                                         </span>
                                         <span
                                             className="action remove-chat"
+                                            data-testid={`cf7vk-bot-${bot.id}-chat-${chat.id}-remove`}
                                             onClick={() => disconnectChat(chat.id)}
                                         >
                                             {wp.i18n.__( 'Remove', 'message-bridge-for-contact-form-7-and-vk' )}
@@ -236,7 +249,13 @@ const BotView = ({
 
                 <div className="frame status-bar">
                     <div className="bot-actions">
-                        <button className="remove-bot-button" type="button" onClick={remove} disabled={saving}>
+                        <button
+                            className="remove-bot-button"
+                            data-testid={`cf7vk-remove-bot-${bot.id}`}
+                            type="button"
+                            onClick={remove}
+                            disabled={saving}
+                        >
                             {wp.i18n.__( 'Remove bot', 'message-bridge-for-contact-form-7-and-vk' )}
                         </button>
                     </div>

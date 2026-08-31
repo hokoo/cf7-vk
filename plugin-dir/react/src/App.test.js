@@ -23,14 +23,33 @@ jest.mock('./components/Bot', () => ({bot, chatDataStatus}) => (
         <span data-testid={`bot-${bot.id}-chats-state`}>{chatDataStatus}</span>
     </div>
 ));
-jest.mock('./components/Channel', () => ({channel, dataAvailability}) => (
+jest.mock('./components/Channel', () => ({
+    channel,
+    dataAvailability,
+    bot2ChannelConnections,
+    chat2ChannelConnections,
+    form2ChannelConnections,
+    onChannelRemoved
+}) => (
     <div>
         Channel {channel.id}
         <span data-testid={`channel-${channel.id}-forms-state`}>{dataAvailability.forms}</span>
         <span data-testid={`channel-${channel.id}-bots-state`}>{dataAvailability.bots}</span>
         <span data-testid={`channel-${channel.id}-chats-state`}>{dataAvailability.chats}</span>
+        <span data-testid={`channel-${channel.id}-bot-relations`}>
+            {bot2ChannelConnections.map((item) => item?.data?.to).join(',')}
+        </span>
+        <span data-testid={`channel-${channel.id}-chat-relations`}>
+            {chat2ChannelConnections.map((item) => item?.data?.to).join(',')}
+        </span>
+        <span data-testid={`channel-${channel.id}-form-relations`}>
+            {form2ChannelConnections.map((item) => item?.data?.to).join(',')}
+        </span>
         <button type="button" disabled={'ready' !== dataAvailability.forms}>
             Add Form {channel.id}
+        </button>
+        <button type="button" onClick={() => onChannelRemoved(channel.id)}>
+            Remove Channel {channel.id}
         </button>
     </div>
 ));
@@ -168,6 +187,41 @@ test('recovers targeted resource state after retry succeeds', async () => {
 
     expect(fetchChannels).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', {name: 'Add Form 20'})).toBeEnabled();
+});
+
+test('cleans local channel relations after a confirmed channel removal', async () => {
+    fetchChannels.mockResolvedValue([
+        {id: 20, title: {rendered: 'Channel 20'}},
+        {id: 21, title: {rendered: 'Channel 21'}},
+    ]);
+    fetchBotsForChannels.mockResolvedValue([
+        {data: {id: 201, from: 10, to: 20}},
+        {data: {id: 202, from: 10, to: 21}},
+    ]);
+    fetchChatsForChannels.mockResolvedValue([
+        {data: {id: 301, from: 30, to: 20}},
+        {data: {id: 302, from: 30, to: 21}},
+    ]);
+    fetchFormsForChannels.mockResolvedValue([
+        {data: {id: 401, from: 40, to: 20}},
+        {data: {id: 402, from: 40, to: 21}},
+    ]);
+
+    render(<App />);
+
+    expect(await screen.findByText('Channel 20')).toBeInTheDocument();
+    expect(screen.getByTestId('channel-21-bot-relations')).toHaveTextContent('20,21');
+    expect(screen.getByTestId('channel-21-chat-relations')).toHaveTextContent('20,21');
+    expect(screen.getByTestId('channel-21-form-relations')).toHaveTextContent('20,21');
+
+    fireEvent.click(screen.getByText('Remove Channel 20'));
+
+    await waitFor(() => {
+        expect(screen.queryByText('Channel 20')).not.toBeInTheDocument();
+        expect(screen.getByTestId('channel-21-bot-relations')).toHaveTextContent('21');
+        expect(screen.getByTestId('channel-21-chat-relations')).toHaveTextContent('21');
+        expect(screen.getByTestId('channel-21-form-relations')).toHaveTextContent('21');
+    });
 });
 
 test('contains render failures and exposes a retry action', () => {
