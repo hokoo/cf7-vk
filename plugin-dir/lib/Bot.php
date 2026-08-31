@@ -484,6 +484,8 @@ class Bot extends Entity implements wpPostAble {
 		$long_poll_ts = trim( (string) ( $long_poll['ts'] ?? '' ) );
 
 		if ( '' === $long_poll_server || '' === $long_poll_key || '' === $long_poll_ts ) {
+			// Exception payloads are retained for diagnostics and are not rendered here.
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			throw VkApiException::missingResponsePayload( $long_poll );
 		}
 

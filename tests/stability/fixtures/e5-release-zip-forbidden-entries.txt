@@ -1,0 +1,18 @@
+# One injected file path per line. Each entry must make scripts/validate-release-zip.sh fail.
+message-bridge-for-contact-form-7-and-vk/package.json
+message-bridge-for-contact-form-7-and-vk/composer.json
+message-bridge-for-contact-form-7-and-vk/composer.lock
+message-bridge-for-contact-form-7-and-vk/react/src/injected.js
+message-bridge-for-contact-form-7-and-vk/react/public/injected.html
+message-bridge-for-contact-form-7-and-vk/react/scripts/injected.js
+message-bridge-for-contact-form-7-and-vk/react/webpack.config.js
+message-bridge-for-contact-form-7-and-vk/react/jest-unit.config.js
+message-bridge-for-contact-form-7-and-vk/react/package-lock.json
+message-bridge-for-contact-form-7-and-vk/react/build/static/js/main.js.map
+message-bridge-for-contact-form-7-and-vk/vendor/hokoo/wpconnections/makefile
+message-bridge-for-contact-form-7-and-vk/vendor/hokoo/wpconnections/php-wp-unit.xml
+message-bridge-for-contact-form-7-and-vk/vendor/ramsey/collection/build/cache/report.xml
+message-bridge-for-contact-form-7-and-vk/tests/InjectedTest.php
+message-bridge-for-contact-form-7-and-vk/.env
+message-bridge-for-contact-form-7-and-vk/private.key
+message-bridge-for-contact-form-7-and-vk/token.txt

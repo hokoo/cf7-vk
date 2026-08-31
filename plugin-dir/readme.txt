@@ -2,7 +2,7 @@
 Contributors: hokku, igortron
 Tags: contact form 7,vk,vkontakte
 Requires at least: 6.0
-Tested up to: 6.9
+Tested up to: 7.1
 Requires PHP: 8.1
 Stable tag: 0.1.4
 License: GPLv2 or later
@@ -112,4 +112,3 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 * Delivery is restricted to active dialogs, and the admin UI now exposes copyable auth commands and channel title editing.
 
 == Upgrade Notice ==
-

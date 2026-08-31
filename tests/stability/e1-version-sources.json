@@ -46,33 +46,34 @@
       "upgrade-v-0.1.3",
       "upgrade-v-0.1.4"
     ],
-      "notes": [
-        "The current candidate declares PHP 8.1 even though early 0.1.x readmes declared PHP 8.0.",
-        "0.1.2 upgrade evidence uses a local git-tag build because no public installable ZIP was found."
-      ]
+    "notes": [
+      "The current candidate declares PHP 8.1 even though early 0.1.x readmes declared PHP 8.0.",
+      "0.1.2 upgrade evidence uses a local git-tag build because no public installable ZIP was found.",
+      "The release support matrix pins Contact Form 7 versions so release gates do not change behavior when WordPress.org updates the latest CF7 package."
+    ]
   },
   "support_matrix": [
     {
-      "matrix_id": "minimum-wp60-php81-cf7-latest",
+      "matrix_id": "minimum-wp60-php81-cf7-577",
       "label": "minimum",
       "required": true,
       "wordpress_version": "6.0",
       "php_version": "8.1",
       "wp_cli_image": "wordpress:cli-php8.1",
-      "contact_form_7_version": "latest",
+      "contact_form_7_version": "5.7.7",
       "cases": [
         "fresh",
         "upgrade-v-0.1.4"
       ]
     },
     {
-      "matrix_id": "current-wp-latest-php83-cf7-latest",
+      "matrix_id": "current-wp71-php83-cf7-617",
       "label": "current",
       "required": true,
-      "wordpress_version": "latest",
+      "wordpress_version": "7.1",
       "php_version": "8.3",
       "wp_cli_image": "wordpress:cli-php8.3",
-      "contact_form_7_version": "latest",
+      "contact_form_7_version": "6.1.7",
       "cases": [
         "fresh",
         "upgrade-v-0.1.0",

@@ -1,0 +1,256 @@
+name: Verify and release zip
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+env:
+  PLUGIN_SLUG: message-bridge-for-contact-form-7-and-vk
+  ZIP_PATH: dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip
+
+jobs:
+  verify:
+    name: Verify source and release zip
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      release_version: ${{ steps.release_version.outputs.value }}
+
+    steps:
+      - name: Check out the source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:2.10.3
+
+      - name: Configure Composer GitHub token
+        run: composer config --global --auth github-oauth.github.com "${{ github.token }}"
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: plugin-dir/react/package-lock.json
+
+      - name: Install Composer dependencies for tests
+        working-directory: ./plugin-dir
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run PHP lint
+        run: find plugin-dir -type f -name '*.php' -not -path '*/vendor/*' -not -path '*/node_modules/*' -print0 | xargs -0 -n 1 php -l
+
+      - name: Run Composer test suite
+        working-directory: ./plugin-dir
+        run: composer test
+
+      - name: Install React dependencies
+        working-directory: ./plugin-dir/react
+        run: npm ci
+
+      - name: Run React tests
+        working-directory: ./plugin-dir/react
+        run: CI=true npm test -- --watchAll=false --runInBand
+
+      - name: Run release dependency audit gates
+        run: scripts/run-release-audits.sh
+
+      - name: Run release gate self-tests
+        run: |
+          tests/stability/e5-plugin-check-parser-test.sh
+          tests/stability/e5-release-zip-hygiene-negative.sh
+
+      - name: Upload release audit reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: message-bridge-for-contact-form-7-and-vk-release-audit-reports
+          path: dist/audit-reports
+          if-no-files-found: warn
+
+      - name: Prepare release version gate
+        id: release_version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            version="${{ github.event.release.tag_name }}"
+            version="$(printf '%s' "$version" | sed -E 's/^(v|version)-?//')"
+            echo "value=$version" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and validate release zip
+        run: EXPECTED_VERSION="${{ steps.release_version.outputs.value }}" scripts/build-release-zip.sh
+
+      - name: Verify release zip reproducibility
+        shell: bash
+        run: |
+          reference_zip="${RUNNER_TEMP}/message-bridge-for-contact-form-7-and-vk-reference.zip"
+          cp "${ZIP_PATH}" "$reference_zip"
+          EXPECTED_VERSION="${{ steps.release_version.outputs.value }}" scripts/build-release-zip.sh
+
+          if ! cmp -s "$reference_zip" "${ZIP_PATH}"; then
+            sha256sum "$reference_zip" "${ZIP_PATH}"
+            echo "Release ZIP is not reproducible." >&2
+            exit 1
+          fi
+
+      - name: Run Plugin Check release gate
+        env:
+          CF7VK_CANDIDATE_ZIP: ${{ github.workspace }}/${{ env.ZIP_PATH }}
+          CF7VK_EXPECTED_CANDIDATE_VERSION: ${{ steps.release_version.outputs.value }}
+        run: tests/stability/e5-plugin-check-gate.sh
+
+      - name: Run isolated current lifecycle smoke
+        if: ${{ github.event_name != 'release' }}
+        env:
+          CF7VK_CANDIDATE_ZIP: ${{ github.workspace }}/${{ env.ZIP_PATH }}
+          CF7VK_EXPECTED_CANDIDATE_VERSION: ${{ steps.release_version.outputs.value }}
+        run: tests/stability/e1-smoke-matrix.sh
+
+      - name: Run supported release lifecycle matrix
+        if: ${{ github.event_name == 'release' }}
+        env:
+          CF7VK_CANDIDATE_ZIP: ${{ github.workspace }}/${{ env.ZIP_PATH }}
+          CF7VK_EXPECTED_CANDIDATE_VERSION: ${{ steps.release_version.outputs.value }}
+          CF7VK_E5_SUPPORT_MATRIX_RESULTS_DIR: ${{ github.workspace }}/test-evidence/support-matrix
+        run: tests/stability/e5-support-matrix.sh
+
+      - name: Upload support matrix evidence
+        if: ${{ always() && github.event_name == 'release' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: message-bridge-for-contact-form-7-and-vk-support-matrix-evidence
+          path: test-evidence/support-matrix
+          if-no-files-found: error
+
+      - name: Run real WordPress REST integration smoke
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'release') && hashFiles('tests/stability/e4-rest-ui-smoke.sh') != '' }}
+        env:
+          CF7VK_CANDIDATE_ZIP: ${{ github.workspace }}/${{ env.ZIP_PATH }}
+          CF7VK_EXPECTED_CANDIDATE_VERSION: ${{ steps.release_version.outputs.value }}
+          CF7VK_E4_SMOKE_RESULTS_DIR: ${{ github.workspace }}/test-evidence/rest-integration
+        run: tests/stability/e4-rest-ui-smoke.sh
+
+      - name: Run authenticated browser canary
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'release') && hashFiles('tests/stability/e5-browser-smoke.sh') != '' }}
+        env:
+          CF7VK_CANDIDATE_ZIP: ${{ github.workspace }}/${{ env.ZIP_PATH }}
+          CF7VK_EXPECTED_CANDIDATE_VERSION: ${{ steps.release_version.outputs.value }}
+          CF7VK_E5_BROWSER_RESULTS_DIR: ${{ github.workspace }}/test-evidence/browser
+        run: tests/stability/e5-browser-smoke.sh
+
+      - name: Run fake VK form delivery E2E
+        if: ${{ (github.event_name == 'pull_request' || github.event_name == 'release') && hashFiles('tests/stability/e6-form-delivery-smoke.sh') != '' }}
+        env:
+          CF7VK_CANDIDATE_ZIP: ${{ github.workspace }}/${{ env.ZIP_PATH }}
+          CF7VK_EXPECTED_CANDIDATE_VERSION: ${{ steps.release_version.outputs.value }}
+          CF7VK_E6_RESULTS_DIR: ${{ github.workspace }}/test-evidence/fake-vk-e2e
+        run: tests/stability/e6-form-delivery-smoke.sh --skip-browser-install
+
+      - name: Upload fake VK E2E evidence
+        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'release') && hashFiles('tests/stability/e6-form-delivery-smoke.sh') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: message-bridge-for-contact-form-7-and-vk-fake-vk-e2e-evidence
+          path: test-evidence/fake-vk-e2e
+          if-no-files-found: error
+
+      - name: Upload browser canary evidence
+        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'release') && hashFiles('tests/stability/e5-browser-smoke.sh') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: message-bridge-for-contact-form-7-and-vk-browser-evidence
+          path: test-evidence/browser
+          if-no-files-found: error
+
+      - name: Upload REST integration evidence
+        if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'release') && hashFiles('tests/stability/e4-rest-ui-smoke.sh') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: message-bridge-for-contact-form-7-and-vk-rest-integration-evidence
+          path: test-evidence/rest-integration
+          if-no-files-found: error
+
+      - name: Upload verified zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: message-bridge-for-contact-form-7-and-vk-wp-plugin
+          path: ${{ env.ZIP_PATH }}
+          if-no-files-found: error
+
+  publish:
+    name: Publish verified GitHub release artifact
+    runs-on: ubuntu-latest
+    needs: verify
+    if: ${{ github.event_name == 'release' }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out the source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download verified zip artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: message-bridge-for-contact-form-7-and-vk-wp-plugin
+          path: dist
+
+      - name: Validate downloaded release zip
+        run: EXPECTED_VERSION="${{ needs.verify.outputs.release_version }}" scripts/validate-release-zip.sh "${ZIP_PATH}"
+
+      - name: Unpack verified plugin
+        run: |
+          rm -rf release-work
+          mkdir -p release-work
+          unzip -q "${ZIP_PATH}" -d release-work
+
+      - name: Upload Release Artifact
+        run: gh release upload "${{ github.event.release.tag_name }}" "${ZIP_PATH}" --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Push prerelease canary to plugin-dist
+        if: ${{ github.event.release.prerelease == true }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin plugin-dist >/dev/null 2>&1; then
+            git fetch origin plugin-dist
+            git worktree add --force dist-worktree origin/plugin-dist
+          else
+            git worktree add --detach dist-worktree
+            git -C dist-worktree checkout --orphan plugin-dist
+            git -C dist-worktree rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          find dist-worktree -mindepth 1 -maxdepth 1 -not -name '.git' -exec rm -rf {} +
+          rsync -a --delete --exclude '.git' release-work/message-bridge-for-contact-form-7-and-vk/ dist-worktree/
+
+          git -C dist-worktree add -A
+          git -C dist-worktree add -f vendor react/build
+
+          if git -C dist-worktree diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git -C dist-worktree commit -m "Update plugin build from release ${{ github.event.release.tag_name }}"
+            git -C dist-worktree push origin HEAD:plugin-dist
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

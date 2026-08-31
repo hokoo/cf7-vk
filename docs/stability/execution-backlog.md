@@ -40,7 +40,8 @@ Execution status as of 2026-08-31:
 - `T14`: completed; admin mutations now have focused component coverage, stable browser selectors, safer failed delete/relation handling, channel removal relation cleanup evidence, preserved failed-save snapshots, and polling retry feedback cleanup.
 - `T15`: completed; admin styles are page-scoped, plugin-owned notices are preserved, and duplicate server-side React roots are removed.
 - `T16`: completed; React build/test tooling now uses `@wordpress/scripts`, emits `main.asset.php`, and PHP enqueues asset dependencies/version from that metadata.
-- `T17`: todo; unblocked by completed `T16`.
+- `T17`: completed; release workflow, release audits, Plugin Check, release ZIP negative tests, and support matrix wrapper are implemented.
+- `T18`: todo; unblocked by completed `T17`.
 
 Completed first execution batch after approval:
 
@@ -49,7 +50,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate`
+- `T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -1311,7 +1312,7 @@ Notes/Risks:
 
 ## T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate
 
-Status: todo
+Status: completed
 
 Goal: make PR and release verification fail closed on source, dependency, artifact, lifecycle, REST, and browser evidence.
 
@@ -1370,11 +1371,46 @@ Dependencies:
 
 Notes/Risks:
 
-- Keep `release.yml` until `build-zip.yml` is proven. Remove or disable the old workflow in the same PR that introduces the replacement to avoid double publication.
+- Implemented files:
+  - `.github/workflows/build-zip.yml`;
+  - deletion of `.github/workflows/release.yml`;
+  - `.gitignore` now ignores generated `dist/` artifacts;
+  - `scripts/run-release-audits.sh`;
+  - `tests/stability/e5-plugin-check-gate.sh`;
+  - `tests/stability/e5-plugin-check-parser-test.sh`;
+  - `tests/stability/e5-plugin-check-results.jq`;
+  - `tests/stability/e5-release-zip-hygiene-negative.sh`;
+  - `tests/stability/fixtures/e5-release-zip-forbidden-entries.txt`;
+  - `tests/stability/e5-support-matrix.sh`;
+  - updates to `tests/stability/e1-version-sources.json`;
+  - updates to `plugin-dir/readme.txt`;
+  - Plugin Check suppressions for non-rendered exception payload forwarding in `plugin-dir/lib/VkApi.php` and `plugin-dir/lib/Bot.php`.
+- `.github/workflows/build-zip.yml` now runs PHP lint, `composer test`, React tests on Node 20, release dependency audits, release gate self-tests, deterministic ZIP build/validation, reproducibility comparison, Plugin Check, current lifecycle smoke on push/PR, and full support matrix on release.
+- The old release workflow was removed so release publication no longer goes through `install/build-plugin-package.sh` or the direct WordPress.org deployment path.
+- PR/release REST/admin, browser, and fake VK smoke steps are already wired but guarded by `hashFiles(...)` until `T18/T19` add the corresponding scripts.
+- The release support matrix pins Contact Form 7 versions:
+  - `minimum-wp60-php81-cf7-577` uses WordPress 6.0, PHP 8.1, and Contact Form 7 5.7.7;
+  - `current-wp71-php83-cf7-617` uses WordPress 7.1, PHP 8.3, and Contact Form 7 6.1.7.
+- This pinning is intentional: a first local matrix attempt with `contact_form_7_version=latest` failed on WordPress 6.0 because the current Contact Form 7 package requires WordPress 6.7.
+- Verification evidence:
+  - `bash -n scripts/run-release-audits.sh tests/stability/e5-plugin-check-gate.sh tests/stability/e5-plugin-check-parser-test.sh tests/stability/e5-release-zip-hygiene-negative.sh tests/stability/e5-support-matrix.sh` passed.
+  - `node -e "const fs=require('fs'); const yaml=require('./plugin-dir/react/node_modules/js-yaml'); yaml.load(fs.readFileSync('.github/workflows/build-zip.yml','utf8')); console.log('workflow yaml ok');"` passed.
+  - `tests/stability/e5-plugin-check-parser-test.sh` passed.
+  - `tests/stability/e5-release-zip-hygiene-negative.sh` passed: 17 forbidden release ZIP entries rejected.
+  - `php -l plugin-dir/lib/VkApi.php && php -l plugin-dir/lib/Bot.php` passed.
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed under `wp-scripts`: 10 suites, 48 tests.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 103 tests, 0 failures, 10 PHP 8.1 dependency-heavy skips.
+  - `./scripts/build-release-zip.sh` passed and validated the release ZIP.
+  - Current candidate ZIP SHA-256 is `e38f3e25cfe7eadea00a4c221bec02b69b62a9cf30762e4653596891a1b39654`; size is `218913` bytes.
+  - `tests/stability/e5-plugin-check-gate.sh` passed against the current candidate ZIP: summary `/tmp/cf7vk-e5-plugin-check-20260831T190057Z-84412.aSexCE/results/summary.json`, 0 failed steps, 0 Plugin Check errors, 5 Plugin Check warnings.
+  - `tests/stability/e5-support-matrix.sh` passed against the current candidate ZIP: summary `/tmp/cf7vk-e5-support-matrix-20260831T191240Z-99223.1X2ope/results/summary.json`, 0 failed steps.
+  - Support matrix row evidence: minimum row 54 passed / 0 failed; current row 166 passed / 0 failed.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T192155Z-12047.epW9Nz/results/summary.json`, 26 steps, 26 passed, 0 skipped, 0 failures.
+  - `scripts/run-release-audits.sh` produced reports under `dist/audit-reports`; composer root audit, composer plugin audit, and npm runtime audit passed locally. The full local script failed only on `composer-plugin-platform` because the local CLI PHP is 8.0.30 while the plugin requires PHP 8.1; the same platform command passed in a Composer container with PHP 8.5.8, and CI runs the audit workflow on PHP 8.2.
 
 ## T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke
 
-Status: waiting_dependency
+Status: todo
 
 Goal: verify admin behavior against a real isolated WordPress install before the fake VK delivery E2E is added.
 

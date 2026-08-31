@@ -168,6 +168,8 @@ class VkApi {
 	 * @throws VkApiException
 	 */
 	private function unwrapApiResult( VkDeliveryResult $result ) {
+		// Exception payloads are retained for diagnostics and are not rendered here.
+		// phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 		if ( $result->ok ) {
 			return $result->result;
 		}
@@ -213,6 +215,7 @@ class VkApi {
 
 		throw VkApiException::invalidLongPollJson();
 	}
+	// phpcs:enable WordPress.Security.EscapeOutput.ExceptionNotEscaped
 
 	private function resultPayload( VkDeliveryResult $result ): array {
 		return is_array( $result->result ) ? $result->result : [];

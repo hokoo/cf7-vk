@@ -50,7 +50,8 @@ Implementation progress as of 2026-08-31:
 - `T14. Harden Admin Mutation Sequencing, State Safety, And Selectors`: completed.
 - `T15. Scope Admin Styles And Notice Policy`: completed.
 - `T16. Migrate React Build To WordPress Scripts`: completed.
-- Next execution-ready task: `T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate`.
+- `T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate`: completed.
+- Next execution-ready task: `T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke`.
 
 ## Reference Stability Scope
 
@@ -186,13 +187,13 @@ Status as of 2026-08-31:
 - mitigated by T1;
 - backend suite currently has 58 tests through PHPUnit-or-compat runner.
 
-### F4. Release pipeline is not fail-closed
+### F4. Release pipeline was not fail-closed
 
-Evidence:
+Initial evidence:
 
-- VK has only `.github/workflows/release.yml`.
-- Release packaging still goes through `install/build-plugin-package.sh`.
-- There are no `scripts/build-release-zip.sh`, `scripts/validate-release-zip.sh`, or `scripts/run-release-audits.sh`.
+- VK had only `.github/workflows/release.yml`.
+- Release packaging went through `install/build-plugin-package.sh`.
+- There were no `scripts/build-release-zip.sh`, `scripts/validate-release-zip.sh`, or `scripts/run-release-audits.sh`.
 
 Risk:
 
@@ -209,9 +210,11 @@ Recommended action:
 
 Status as of 2026-08-31:
 
-- partially mitigated by T2;
+- mitigated for PR/release ZIP verification by T2 and T17;
 - deterministic local ZIP builder and fail-closed ZIP validator are implemented and passing;
-- GitHub workflow replacement, release audit script, Plugin Check gate, and WordPress.org promotion workflow remain open in later release-delivery tasks.
+- `.github/workflows/build-zip.yml` replaces the old release workflow and runs source checks, PHP tests, React tests, release audits, deterministic ZIP validation, reproducibility, Plugin Check, current lifecycle smoke, and release support matrix evidence;
+- Plugin Check passes with 0 errors and 5 warnings on the current candidate ZIP;
+- WordPress.org production promotion remains intentionally separate and is tracked by T20.
 
 ### F5. Logs are neither redacted nor bounded
 
@@ -404,13 +407,13 @@ Status as of 2026-08-31:
 - bot, channel, and chat deletion now append `force=true` as a separate query parameter for both pretty and non-pretty REST route shapes;
 - React unit tests cover `index.php?rest_route=/wp/v2/...` delete URLs, while real REST state confirmation remains part of T18.
 
-### F12. React build tooling is still Create React App based
+### F12. React build tooling was Create React App based
 
-Evidence:
+Initial evidence:
 
-- `plugin-dir/react/package.json` uses `react-scripts`.
-- `plugin-dir/react/config-overrides.js` and `scripts/postbuild-stable.js` maintain stable filenames manually.
-- `.github/workflows/release.yml` uses Node 18.
+- `plugin-dir/react/package.json` used `react-scripts`.
+- `plugin-dir/react/config-overrides.js` and `scripts/postbuild-stable.js` maintained stable filenames manually.
+- `.github/workflows/release.yml` used Node 18.
 
 Risk:
 
@@ -430,7 +433,7 @@ Status as of 2026-08-31:
 - `react-scripts`, `config-overrides.js`, and the CRA postbuild copier were removed;
 - `wp-scripts build` now emits stable `main.js`, `main.css`, `main.asset.php`, and `settings-content.html`;
 - `Settings::admin_enqueue_scripts()` reads dependencies/version from `main.asset.php` and appends `wp-i18n`;
-- CI workflow hardening, release audits, Plugin Check, support matrix, and Node pinning remain open for T17.
+- CI workflow hardening, release audits, Plugin Check, support matrix, and Node 20 pinning are mitigated by T17.
 
 ### F13. There is no fake VK end-to-end delivery gate
 
