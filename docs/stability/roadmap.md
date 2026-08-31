@@ -48,7 +48,8 @@ Implementation progress as of 2026-08-31:
 - `T12. Harden REST API And React API Client`: completed.
 - `T13. Add React Resource State, Error Boundary, And Retry-Failed UI`: completed.
 - `T14. Harden Admin Mutation Sequencing, State Safety, And Selectors`: completed.
-- Next execution-ready task: `T15. Scope Admin Styles And Notice Policy`.
+- `T15. Scope Admin Styles And Notice Policy`: completed.
+- Next execution-ready task: `T16. Migrate React Build To WordPress Scripts`.
 
 ## Reference Stability Scope
 
@@ -353,7 +354,8 @@ Status as of 2026-08-31:
 - invalid JSON, permission failures, transport failures, sensitive URL redaction, and later-page collection failures are covered by React unit tests;
 - `App` now uses independent resource state and `Promise.allSettled`, keeps loaded sections visible across unrelated failures, shows targeted resource errors, retries only failed resources, disables dependency-gated controls, and wraps the settings screen in `SettingsErrorBoundary`;
 - T14 added focused component tests, mutation failure guards, stable browser selectors, channel removal relation cleanup evidence, failed-save snapshot preservation, and polling transient-error cleanup;
-- admin style/notice scoping, build-chain migration, and real browser smoke remain open for T15/T16/T18.
+- T15 scoped admin menu/background/notice CSS to the plugin page, preserved `cf7vk-notice`, and removed the duplicate server-side `cf7-vk-container` root;
+- build-chain migration and real browser smoke remain open for T16/T18.
 
 ### F10. CF7 forms are not paginated in the admin API client
 

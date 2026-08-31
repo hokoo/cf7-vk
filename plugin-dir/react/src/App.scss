@@ -1,5 +1,30 @@
-body[class*="page_wpcf7_vk"] {
+body[class*="page_wpcf7_vk"],
+body[class*="page_wpcf7_vk"] #wpwrap,
+body[class*="page_wpcf7_vk"] #wpcontent,
+body[class*="page_wpcf7_vk"] #wpbody,
+body[class*="page_wpcf7_vk"] #wpbody-content {
   background-color: #0e1621;
+}
+
+body[class*="page_wpcf7_vk"] #wpbody-content {
+  > .notice:not(.cf7vk-notice),
+  > .updated:not(.cf7vk-notice),
+  > .error:not(.cf7vk-notice),
+  > .update-nag:not(.cf7vk-notice) {
+    display: none !important;
+  }
+}
+
+body[class*="page_wpcf7_vk"] ul#adminmenu a.wp-has-current-submenu:after,
+body[class*="page_wpcf7_vk"] ul#adminmenu > li.current > a.current:after {
+  border-right-color: #0e1621;
+}
+
+#cf7-vk-admin-page {
+  background-color: #0e1621;
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 1px 20px 20px 0;
 
   h1,
   h2,
@@ -31,11 +56,6 @@ body[class*="page_wpcf7_vk"] {
       margin-top: 0;
     }
   }
-}
-
-ul#adminmenu a.wp-has-current-submenu:after,
-ul#adminmenu > li.current > a.current:after {
-  border-right-color: #0e1621;
 }
 
 .cf7-tg-container {

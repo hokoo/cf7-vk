@@ -35,7 +35,8 @@ class Settings {
 	}
 
 	public static function renderPage(): void {
-		echo '<div id="cf7-vk-container"><div class="wrap">';
+		echo '<div id="cf7-vk-admin-page" class="cf7vk-admin-page"><div class="wrap">';
+		echo wp_kses_post( self::getMigrationNotice() );
 		echo wp_kses_post( self::getSettingsContent() );
 		echo '</div></div>';
 	}
@@ -100,6 +101,26 @@ class Settings {
 		}
 
 		return '<div id="settings-content"></div>';
+	}
+
+	private static function getMigrationNotice(): string {
+		$migration = Migration::getAdminRecoveryState();
+
+		if ( ! empty( $migration['is_scheduled'] ) || ! empty( $migration['is_running'] ) ) {
+			return sprintf(
+				'<div class="notice cf7vk-notice notice-info"><p>%s</p></div>',
+				esc_html__( 'Data migration is in progress. Please reload the page after a few seconds.', 'message-bridge-for-contact-form-7-and-vk' )
+			);
+		}
+
+		if ( ! empty( $migration['is_failed'] ) ) {
+			return sprintf(
+				'<div class="notice cf7vk-notice notice-error"><p>%s</p></div>',
+				esc_html__( 'Data migration failed. You can retry it below.', 'message-bridge-for-contact-form-7-and-vk' )
+			);
+		}
+
+		return '';
 	}
 
 	private static function getScriptData(): array {

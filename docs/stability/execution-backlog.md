@@ -38,7 +38,7 @@ Execution status as of 2026-08-31:
 - `T12`: completed; React REST requests now use typed sanitized `ApiError` diagnostics, paginated bot/chat/channel and CF7 form collection loading, duplicate-ID protection, fail-closed later-page errors, and permalink-safe force-delete URLs.
 - `T13`: completed; admin bootstrap now keeps independent resource state, preserves loaded sections across unrelated REST failures, exposes targeted load errors, retries only failed resources, disables dependency-gated controls, and wraps the settings app in an error boundary.
 - `T14`: completed; admin mutations now have focused component coverage, stable browser selectors, safer failed delete/relation handling, channel removal relation cleanup evidence, preserved failed-save snapshots, and polling retry feedback cleanup.
-- `T15`: todo; unblocked by completed `T13`.
+- `T15`: completed; admin styles are page-scoped, plugin-owned notices are preserved, and duplicate server-side React roots are removed.
 - `T16`: todo; unblocked by completed `T12` and `T13`.
 
 Completed first execution batch after approval:
@@ -48,7 +48,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T15. Scope Admin Styles And Notice Policy`
+- `T16. Migrate React Build To WordPress Scripts`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -1160,7 +1160,7 @@ Notes/Risks:
 
 ## T15. Scope Admin Styles And Notice Policy
 
-Status: todo
+Status: completed
 
 Goal: keep the plugin admin page usable without leaking styles into unrelated WordPress admin UI.
 
@@ -1204,6 +1204,27 @@ Dependencies:
 Notes/Risks:
 
 - The current CSS is only enqueued on the plugin page, but selector scoping still matters for smoke assertions and future reuse.
+- Implemented files:
+  - updates to `plugin-dir/lib/Settings.php`;
+  - updates to `plugin-dir/react/src/App.scss`;
+  - `plugin-dir/react/src/AppStyles.test.js`;
+  - `plugin-dir/tests/SettingsTest.php`;
+  - updates to `plugin-dir/tests/bootstrap.php`.
+- `Settings::renderPage()` now uses a server-only `cf7-vk-admin-page` wrapper and leaves `settings-content` as the single React mount point, avoiding duplicate `cf7-vk-container` IDs after React mounts.
+- Failed and in-progress migration states render plugin-owned `cf7vk-notice` admin notices before the React content.
+- Admin backgrounds now cover the WordPress page containers on the plugin page, while admin menu arrow styling is explicitly scoped under `body[class*="page_wpcf7_vk"]`.
+- Notice hiding is limited to direct unrelated notices under `#wpbody-content` and explicitly excludes `.cf7vk-notice`.
+- Verification evidence:
+  - `php -l plugin-dir/lib/Settings.php && php -l plugin-dir/tests/bootstrap.php && php -l plugin-dir/tests/SettingsTest.php` passed.
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 10 suites, 48 tests.
+  - `npm --prefix plugin-dir/react run build` passed.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 102 tests, 0 failures, 10 PHP 8.1 dependency-heavy skips.
+  - `git diff --check` passed.
+  - `./scripts/build-release-zip.sh` and `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed.
+  - Current candidate ZIP SHA-256 is `5f21d85f8b61dbbc550676ad1a3b9a3de04d19813f4e506aa5d652356ca8f330`; size is `262009` bytes.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T181707Z-41158.n9pjuK/results/summary.json`, 26 steps, 26 passed, 0 skipped, 0 failures.
+  - `tests/stability/e1-smoke-matrix.sh` passed: summary `/tmp/cf7vk-e1-20260831T181757Z-43953.wuu1rQ/results/summary.json`, 166 steps, 166 passed, 0 skipped, 0 failures.
+- Known build-chain noise remains from Create React App and React test tooling: dependency deprecation warnings, the undeclared `@babel/plugin-proposal-private-property-in-object` warning, Browserslist currency warnings, and ReactDOMTestUtils `act` warnings. These are tracked by T16.
 
 ## T16. Migrate React Build To WordPress Scripts
 

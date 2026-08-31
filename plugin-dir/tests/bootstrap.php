@@ -858,6 +858,12 @@ if ( ! function_exists( 'esc_html' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_kses_post' ) ) {
+	function wp_kses_post( string $content ): string {
+		return $content;
+	}
+}
+
 if ( ! function_exists( 'wp_strip_all_tags' ) ) {
 	function wp_strip_all_tags( string $text, bool $remove_breaks = false ): string {
 		$text = strip_tags( $text );
