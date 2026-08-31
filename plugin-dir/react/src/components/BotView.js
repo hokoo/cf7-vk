@@ -15,6 +15,7 @@ const BotView = ({
     statusClass,
     chatsForBot = [],
     bot2ChatConnections = [],
+    chatDataStatus = 'ready',
     updateField,
     remove,
     handleFieldBlur,
@@ -46,7 +47,11 @@ const BotView = ({
     const groupIdInputId = `bot-${bot.id}-group-id`;
 
     return (
-        <div className={`entity-container bot ${statusClass}`} id={`bot-${bot.id}`}>
+        <div
+            className={`entity-container bot ${statusClass}`}
+            data-testid={`cf7vk-bot-${bot.id}`}
+            id={`bot-${bot.id}`}
+        >
             <div className={`entity-wrapper bot-wrapper ${saving ? 'saving' : ''}`}>
                 <div className="frame bot-summary">
                     <div className="bot-title">
@@ -95,6 +100,7 @@ const BotView = ({
                     <div className="bot-token">
                         <div
                             className={`show-token${bot.isAccessTokenDefinedByConst ? ' const' : ''}`}
+                            data-testid={`cf7vk-bot-token-display-${bot.id}`}
                             onClick={startEditingToken}
                             title={bot.isAccessTokenDefinedByConst
                                 ? phpConstDefinedLabel
@@ -118,6 +124,7 @@ const BotView = ({
                         {isEditingToken ? (
                             <input
                                 className="edit-token"
+                                data-testid={`cf7vk-bot-token-input-${bot.id}`}
                                 type="text"
                                 value={form.accessToken}
                                 onChange={updateField('accessToken')}
@@ -159,6 +166,7 @@ const BotView = ({
                             </span>
                             <input
                                 id={groupIdInputId}
+                                data-testid={`cf7vk-bot-group-id-${bot.id}`}
                                 value={form.groupId}
                                 onChange={updateField('groupId')}
                                 onBlur={handleFieldBlur}
@@ -174,17 +182,30 @@ const BotView = ({
                 <div className="frame chats-for-bot">
                     <h5>{wp.i18n.__( 'Linked dialogs', 'message-bridge-for-contact-form-7-and-vk' )}</h5>
 
-                    {chatsForBot.length > 0 ? (
+                    {'error' === chatDataStatus ? (
+                        <span className="resource-error">
+                            {wp.i18n.__( 'VK dialogs could not be loaded.', 'message-bridge-for-contact-form-7-and-vk' )}
+                        </span>
+                    ) : 'ready' !== chatDataStatus ? (
+                        <span className="resource-loading">
+                            {wp.i18n.__( 'Loading VK dialogs...', 'message-bridge-for-contact-form-7-and-vk' )}
+                        </span>
+                    ) : chatsForBot.length > 0 ? (
                         <ul>
                             {chatsForBot.map((chat) => {
                                 const status = getChatStatus(bot.id, chat.id, bot2ChatConnections);
                                 const title = chat.title?.rendered || chat.displayName || `#${chat.id}`;
 
                                 return (
-                                    <li key={chat.id} className={`chat-item ${status.toLowerCase()}`}>
+                                    <li
+                                        key={chat.id}
+                                        className={`chat-item ${status.toLowerCase()}`}
+                                        data-testid={`cf7vk-bot-${bot.id}-chat-${chat.id}`}
+                                    >
                                         <span className="chat-name" title={status}>{title}</span>
                                         <span
                                             className="action toggle-status"
+                                            data-testid={`cf7vk-bot-${bot.id}-chat-${chat.id}-toggle`}
                                             onClick={() => {
                                                 if ('Pending' === status) {
                                                     handleActivatePendingChat(chat.id);
@@ -198,6 +219,7 @@ const BotView = ({
                                         </span>
                                         <span
                                             className="action remove-chat"
+                                            data-testid={`cf7vk-bot-${bot.id}-chat-${chat.id}-remove`}
                                             onClick={() => disconnectChat(chat.id)}
                                         >
                                             {wp.i18n.__( 'Remove', 'message-bridge-for-contact-form-7-and-vk' )}
@@ -227,7 +249,13 @@ const BotView = ({
 
                 <div className="frame status-bar">
                     <div className="bot-actions">
-                        <button className="remove-bot-button" type="button" onClick={remove} disabled={saving}>
+                        <button
+                            className="remove-bot-button"
+                            data-testid={`cf7vk-remove-bot-${bot.id}`}
+                            type="button"
+                            onClick={remove}
+                            disabled={saving}
+                        >
                             {wp.i18n.__( 'Remove bot', 'message-bridge-for-contact-form-7-and-vk' )}
                         </button>
                     </div>

@@ -1,6 +1,6 @@
 /* global wp */
 
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import Channel from './components/Channel';
 import Bot from './components/Bot';
 import NewBot from './components/NewBot';
@@ -23,7 +23,57 @@ const replaceById = (items, nextItem) => sortById([
     nextItem
 ]);
 
-const App = () => {
+const RESOURCE_NAMES = [
+    'bots',
+    'channels',
+    'chats',
+    'forms',
+    'bot2ChatConnections',
+    'chat2ChannelConnections',
+    'bot2ChannelConnections',
+    'form2ChannelConnections',
+];
+
+const createResourceStates = () => RESOURCE_NAMES.reduce((states, name) => ({
+    ...states,
+    [name]: {status: 'idle', error: null},
+}), {});
+
+export class SettingsErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {hasError: false, retryKey: 0};
+    }
+
+    static getDerivedStateFromError() {
+        return {hasError: true};
+    }
+
+    componentDidCatch() {
+        console.error('CF7 VK settings failed to render.');
+    }
+
+    retry = () => {
+        this.setState((state) => ({hasError: false, retryKey: state.retryKey + 1}));
+    };
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="cf7vk-error-boundary" role="alert">
+                    <p>{wp.i18n.__( 'The settings screen could not be displayed.', 'message-bridge-for-contact-form-7-and-vk' )}</p>
+                    <button type="button" className="button" onClick={this.retry}>
+                        {wp.i18n.__( 'Try again', 'message-bridge-for-contact-form-7-and-vk' )}
+                    </button>
+                </div>
+            );
+        }
+
+        return <React.Fragment key={this.state.retryKey}>{this.props.children}</React.Fragment>;
+    }
+}
+
+const SettingsApp = () => {
     const [bots, setBots] = useState([]);
     const [channels, setChannels] = useState([]);
     const [chats, setChats] = useState([]);
@@ -32,85 +82,98 @@ const App = () => {
     const [chat2ChannelConnections, setChat2ChannelConnections] = useState([]);
     const [bot2ChannelConnections, setBot2ChannelConnections] = useState([]);
     const [form2ChannelConnections, setForm2ChannelConnections] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [resources, setResources] = useState(createResourceStates);
 
-    const loadInitialData = async () => {
+    const loadResource = useCallback(async (name, loader, apply) => {
+        setResources((previous) => ({
+            ...previous,
+            [name]: {status: 'loading', error: null},
+        }));
+
         try {
-            const [
-                loadedBots,
-                loadedChannels,
-                loadedChats,
-                loadedForms,
-                loadedBotChatConnections,
-                loadedChatChannelConnections,
-                loadedBotConnections,
-                loadedFormConnections
-            ] = await Promise.all([
-                fetchBots(),
-                fetchChannels(),
-                fetchChats(),
-                fetchForms(),
-                fetchBotsForChats(),
-                fetchChatsForChannels(),
-                fetchBotsForChannels(),
-                fetchFormsForChannels()
-            ]);
-
-            setBots(normalizeList(loadedBots));
-            setChannels(normalizeList(loadedChannels));
-            setChats(normalizeList(loadedChats));
-            setForms(normalizeList(loadedForms));
-            setBot2ChatConnections(normalizeList(loadedBotChatConnections));
-            setChat2ChannelConnections(normalizeList(loadedChatChannelConnections));
-            setBot2ChannelConnections(normalizeList(loadedBotConnections));
-            setForm2ChannelConnections(normalizeList(loadedFormConnections));
-        } finally {
-            setLoading(false);
+            const data = normalizeList(await loader());
+            apply(data);
+            setResources((previous) => ({
+                ...previous,
+                [name]: {status: 'success', error: null},
+            }));
+            return data;
+        } catch (error) {
+            setResources((previous) => ({
+                ...previous,
+                [name]: {status: 'error', error},
+            }));
+            throw error;
         }
-    };
+    }, []);
 
-    const refreshBots = async () => {
-        const loadedBots = await fetchBots();
-        setBots(normalizeList(loadedBots));
-    };
+    const loadResources = useCallback((names = RESOURCE_NAMES) => Promise.allSettled(
+        names.map((name) => {
+            switch (name) {
+                case 'bots':
+                    return loadResource(name, fetchBots, setBots);
+                case 'channels':
+                    return loadResource(name, fetchChannels, setChannels);
+                case 'chats':
+                    return loadResource(name, fetchChats, setChats);
+                case 'forms':
+                    return loadResource(name, fetchForms, setForms);
+                case 'bot2ChatConnections':
+                    return loadResource(name, fetchBotsForChats, setBot2ChatConnections);
+                case 'chat2ChannelConnections':
+                    return loadResource(name, fetchChatsForChannels, setChat2ChannelConnections);
+                case 'bot2ChannelConnections':
+                    return loadResource(name, fetchBotsForChannels, setBot2ChannelConnections);
+                case 'form2ChannelConnections':
+                    return loadResource(name, fetchFormsForChannels, setForm2ChannelConnections);
+                default:
+                    return Promise.resolve();
+            }
+        })
+    ), [loadResource]);
 
-    const refreshChannels = async () => {
-        const loadedChannels = await fetchChannels();
-        setChannels(normalizeList(loadedChannels));
-    };
+    const refreshBots = useCallback(
+        async () => loadResource('bots', fetchBots, setBots),
+        [loadResource]
+    );
 
-    const refreshChats = async () => {
-        const loadedChats = await fetchChats();
-        setChats(normalizeList(loadedChats));
-    };
+    const refreshChannels = useCallback(
+        async () => loadResource('channels', fetchChannels, setChannels),
+        [loadResource]
+    );
 
-    const refreshBotChatConnections = async () => {
-        const loadedConnections = await fetchBotsForChats();
-        setBot2ChatConnections(normalizeList(loadedConnections));
-    };
+    const refreshChats = useCallback(
+        async () => loadResource('chats', fetchChats, setChats),
+        [loadResource]
+    );
 
-    const refreshChatChannelConnections = async () => {
-        const loadedConnections = await fetchChatsForChannels();
-        setChat2ChannelConnections(normalizeList(loadedConnections));
-    };
+    const refreshBotChatConnections = useCallback(
+        async () => loadResource('bot2ChatConnections', fetchBotsForChats, setBot2ChatConnections),
+        [loadResource]
+    );
 
-    const refreshBotChannelConnections = async () => {
-        const loadedConnections = await fetchBotsForChannels();
-        setBot2ChannelConnections(normalizeList(loadedConnections));
-    };
+    const refreshChatChannelConnections = useCallback(
+        async () => loadResource('chat2ChannelConnections', fetchChatsForChannels, setChat2ChannelConnections),
+        [loadResource]
+    );
 
-    const refreshFormChannelConnections = async () => {
-        const loadedConnections = await fetchFormsForChannels();
-        setForm2ChannelConnections(normalizeList(loadedConnections));
-    };
+    const refreshBotChannelConnections = useCallback(
+        async () => loadResource('bot2ChannelConnections', fetchBotsForChannels, setBot2ChannelConnections),
+        [loadResource]
+    );
 
-    const refreshBotRuntime = async () => {
+    const refreshFormChannelConnections = useCallback(
+        async () => loadResource('form2ChannelConnections', fetchFormsForChannels, setForm2ChannelConnections),
+        [loadResource]
+    );
+
+    const refreshBotRuntime = useCallback(async () => {
         await Promise.all([
             refreshBots(),
             refreshChats(),
             refreshBotChatConnections()
         ]);
-    };
+    }, [refreshBotChatConnections, refreshBots, refreshChats]);
 
     const handleBotCreated = (createdBot) => {
         if (!createdBot?.id) {
@@ -162,36 +225,67 @@ const App = () => {
     };
 
     useEffect(() => {
-        loadInitialData();
-    }, []);
+        loadResources();
+    }, [loadResources]);
 
-    if (loading) {
+    const resourceStatus = (name) => resources[name]?.status ?? 'idle';
+    const resourceAvailability = (...names) => {
+        if (names.some((name) => 'error' === resourceStatus(name))) {
+            return 'error';
+        }
+
+        return names.every((name) => 'success' === resourceStatus(name)) ? 'ready' : 'loading';
+    };
+
+    const failedResources = RESOURCE_NAMES.filter((name) => 'error' === resourceStatus(name));
+    const hasSettledResource = RESOURCE_NAMES.some(
+        (name) => ['success', 'error'].includes(resourceStatus(name))
+    );
+
+    if (!hasSettledResource) {
         return <div>{wp.i18n.__( 'Loading data...', 'message-bridge-for-contact-form-7-and-vk' )}</div>;
     }
 
     return (
         <>
             <h1>{wp.i18n.__( 'VK Message Bridge Settings', 'message-bridge-for-contact-form-7-and-vk' )}</h1>
+            {failedResources.length > 0 ? (
+                <div className="notice notice-error cf7vk-notice cf7vk-load-status" role="alert">
+                    <p>{wp.i18n.__( 'Some settings data could not be loaded.', 'message-bridge-for-contact-form-7-and-vk' )}</p>
+                    <button
+                        type="button"
+                        className="button"
+                        onClick={() => loadResources(failedResources)}
+                    >
+                        {wp.i18n.__( 'Retry failed requests', 'message-bridge-for-contact-form-7-and-vk' )}
+                    </button>
+                </div>
+            ) : null}
             <div className="cf7-tg-container" id="cf7-vk-container">
                 <div className="main-container">
                     <div className="list-container bots-container">
                         <div className="title-container">
                             <h3 className="title">{wp.i18n.__( 'Bots', 'message-bridge-for-contact-form-7-and-vk' )}</h3>
-                            <NewBot onCreated={handleBotCreated} />
+                            <NewBot onCreated={handleBotCreated} disabled={'success' !== resourceStatus('bots')} />
                         </div>
 
                         <div className="bot-list">
+                            {'error' === resourceStatus('bots') ? (
+                                <p className="resource-error">{wp.i18n.__( 'Bots could not be loaded.', 'message-bridge-for-contact-form-7-and-vk' )}</p>
+                            ) : null}
                             {bots.map((bot) => (
                                 <Bot
                                     key={bot.id}
                                     bot={bot}
                                     chats={chats}
                                     bot2ChatConnections={bot2ChatConnections}
+                                    chatDataStatus={resourceAvailability('chats', 'bot2ChatConnections')}
                                     onBotSaved={handleBotSaved}
                                     onBotRemoved={handleBotRemoved}
                                     refreshBots={refreshBots}
                                     refreshBotRuntime={refreshBotRuntime}
                                     refreshBotChatConnections={refreshBotChatConnections}
+                                    refreshBotChannelConnections={refreshBotChannelConnections}
                                     refreshChatChannelConnections={refreshChatChannelConnections}
                                 />
                             ))}
@@ -201,10 +295,13 @@ const App = () => {
                     <div className="list-container channels-container">
                         <div className="title-container">
                             <h3 className="title">{wp.i18n.__( 'Channels', 'message-bridge-for-contact-form-7-and-vk' )}</h3>
-                            <NewChannel onCreated={handleChannelCreated} />
+                            <NewChannel onCreated={handleChannelCreated} disabled={'success' !== resourceStatus('channels')} />
                         </div>
 
                         <div className="channel-list">
+                            {'error' === resourceStatus('channels') ? (
+                                <p className="resource-error">{wp.i18n.__( 'Channels could not be loaded.', 'message-bridge-for-contact-form-7-and-vk' )}</p>
+                            ) : null}
                             {channels.map((channel) => (
                                 <Channel
                                     key={channel.id}
@@ -221,6 +318,17 @@ const App = () => {
                                     refreshBotChannelConnections={refreshBotChannelConnections}
                                     refreshChatChannelConnections={refreshChatChannelConnections}
                                     refreshFormChannelConnections={refreshFormChannelConnections}
+                                    dataAvailability={{
+                                        forms: resourceAvailability('forms', 'form2ChannelConnections'),
+                                        bots: resourceAvailability('bots', 'bot2ChannelConnections'),
+                                        chats: resourceAvailability(
+                                            'bots',
+                                            'bot2ChannelConnections',
+                                            'chats',
+                                            'bot2ChatConnections',
+                                            'chat2ChannelConnections'
+                                        ),
+                                    }}
                                 />
                             ))}
                         </div>
@@ -234,5 +342,11 @@ const App = () => {
         </>
     );
 };
+
+const App = () => (
+    <SettingsErrorBoundary>
+        <SettingsApp />
+    </SettingsErrorBoundary>
+);
 
 export default App;

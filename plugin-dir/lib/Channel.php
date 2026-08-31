@@ -22,6 +22,8 @@ use iTRON\wpPostAble\Exceptions\wppaLoadPostException;
 use iTRON\wpPostAble\wpPostAble;
 use iTRON\wpPostAble\wpPostAbleTrait;
 use OutOfBoundsException;
+use Ramsey\Collection\Exception\NoSuchElementException;
+use Throwable;
 
 class Channel extends Entity implements wpPostAble {
 	use wpPostAbleTrait;
@@ -90,7 +92,7 @@ class Channel extends Entity implements wpPostAble {
 
 		try {
 			$this->bot = $bots->createByConnections( $connections )->first();
-		} catch ( OutOfBoundsException $e ) {
+		} catch ( OutOfBoundsException | NoSuchElementException $e ) {
 			$this->bot = null;
 		}
 
@@ -200,19 +202,36 @@ class Channel extends Entity implements wpPostAble {
 		return $this->getBot()->getPost()->ID === $bot->getPost()->ID;
 	}
 
-	public function doSendOut( string $message, array $context = [] ): void {
+	public function doSendOut( string $message, array $context = [] ): array {
+		$result = $this->createDeliveryResult();
+
 		do_action( 'cf7vk_channel_sendout', $this, $message, $context );
 
-		$bot = $this->getBot();
-
-		if ( ! $bot ) {
-			return;
+		try {
+			$bot = $this->getBot();
+		} catch ( RelationNotFound $e ) {
+			return $this->recordChannelRelationFailure( $result, 'bot_lookup', $e, $context );
 		}
 
-		$chats = $this->getChats();
+		if ( ! $bot ) {
+			$result['status'] = 'no_bot';
+
+			return $result;
+		}
+
+		$result['botId'] = $bot->getPost()->ID;
+		$result['hasBot'] = true;
+
+		try {
+			$chats = $this->getChats();
+		} catch ( RelationNotFound $e ) {
+			return $this->recordChannelRelationFailure( $result, 'chat_lookup', $e, $context );
+		}
 
 		if ( $chats->isEmpty() ) {
-			return;
+			$result['status'] = 'no_chats';
+
+			return $result;
 		}
 
 		foreach ( $chats as $chat ) {
@@ -242,11 +261,15 @@ class Channel extends Entity implements wpPostAble {
 				);
 
 				do_action( 'cf7vk_delivery_exception', $e, $this, $chat, $exception_context );
+				$result['failed']++;
+				$result['recipients'][] = $this->createRecipientResult( $chat, 'status_lookup_failed', null, $e );
 
 				continue;
 			}
 
 			if ( Chat::STATUS_ACTIVE !== $chat_status ) {
+				$result['skipped']++;
+				$result['recipients'][] = $this->createRecipientResult( $chat, 'skipped', $chat_status );
 				continue;
 			}
 
@@ -257,14 +280,17 @@ class Channel extends Entity implements wpPostAble {
 					'chatStatus' => $chat_status,
 				]
 			);
+			$result['attempted']++;
 
 			try {
-				$bot->sendMessage(
+				$message_id = $bot->sendMessage(
 					$chat,
 					$message,
 					true,
 					$delivery_context
 				);
+				$result['succeeded']++;
+				$result['recipients'][] = $this->createRecipientResult( $chat, 'sent', $chat_status, null, $message_id );
 			} catch ( TransportNotConfigured | VkApiException $e ) {
 				$this->logger->write(
 					[
@@ -281,8 +307,126 @@ class Channel extends Entity implements wpPostAble {
 				);
 
 				do_action( 'cf7vk_delivery_exception', $e, $this, $chat, $delivery_context );
+				$result['failed']++;
+				$result['recipients'][] = $this->createRecipientResult( $chat, 'failed', $chat_status, $e );
 			}
 		}
+
+		return $this->finalizeDeliveryResult( $result );
+	}
+
+	private function createDeliveryResult(): array {
+		return [
+			'channelId' => $this->getPost()->ID,
+			'botId' => null,
+			'hasBot' => false,
+			'status' => 'pending',
+			'attempted' => 0,
+			'succeeded' => 0,
+			'failed' => 0,
+			'skipped' => 0,
+			'recipients' => [],
+			'errors' => [],
+		];
+	}
+
+	private function recordChannelRelationFailure( array $result, string $stage, RelationNotFound $exception, array $context ): array {
+		$exception_context = array_merge(
+			$context,
+			[
+				'channelId' => $this->getPost()->ID,
+				'stage' => $stage,
+			]
+		);
+
+		$this->logger->write(
+			[
+				'channelId' => $this->getPost()->ID,
+				'channelTitle' => $this->getTitle(),
+				'error' => $exception->getMessage(),
+				'context' => $this->normalizeLogContext( $exception_context ),
+			],
+			'VK channel delivery relation lookup failed.',
+			Logger::LEVEL_WARNING
+		);
+
+		do_action( 'cf7vk_delivery_exception', $exception, $this, null, $exception_context );
+
+		$result['status'] = 'failed';
+		$result['failed']++;
+		$result['errors'][] = array_merge(
+			[
+				'stage' => $stage,
+			],
+			$this->errorData( $exception )
+		);
+
+		return $result;
+	}
+
+	private function createRecipientResult(
+		Chat $chat,
+		string $status,
+		?string $chat_status = null,
+		?Throwable $exception = null,
+		?int $message_id = null
+	): array {
+		$result = [
+			'chatId' => $chat->getPost()->ID,
+			'status' => $status,
+		];
+
+		if ( null !== $chat_status ) {
+			$result['chatStatus'] = $chat_status;
+		}
+
+		if ( null !== $message_id ) {
+			$result['messageId'] = $message_id;
+		}
+
+		if ( null !== $exception ) {
+			$result['error'] = $this->errorData( $exception );
+		}
+
+		return $result;
+	}
+
+	private function errorData( Throwable $exception ): array {
+		return [
+			'type' => get_class( $exception ),
+			'code' => (int) $exception->getCode(),
+			'message' => LogRedactor::redactString( $exception->getMessage() ),
+		];
+	}
+
+	private function finalizeDeliveryResult( array $result ): array {
+		if ( $result['failed'] > 0 && $result['succeeded'] > 0 ) {
+			$result['status'] = 'partial_failure';
+
+			return $result;
+		}
+
+		if ( $result['failed'] > 0 ) {
+			$result['status'] = 'failed';
+
+			return $result;
+		}
+
+		if ( $result['succeeded'] > 0 ) {
+			$result['status'] = 'sent';
+
+			return $result;
+		}
+
+		if ( $result['skipped'] > 0 ) {
+			$result['status'] = 'no_active_chats';
+
+			return $result;
+		}
+
+		$result['status'] = 'no_recipients';
+
+		return $result;
 	}
 
 	private function normalizeLogContext( array $context ): array {

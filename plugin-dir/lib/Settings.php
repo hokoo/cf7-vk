@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use iTRON\cf7Vk\Controllers\CPT;
+use iTRON\cf7Vk\Controllers\Migration;
 
 class Settings {
 	public const PAGE_SLUG = 'wpcf7_vk';
@@ -34,7 +35,8 @@ class Settings {
 	}
 
 	public static function renderPage(): void {
-		echo '<div id="cf7-vk-container"><div class="wrap">';
+		echo '<div id="cf7-vk-admin-page" class="cf7vk-admin-page"><div class="wrap">';
+		echo wp_kses_post( self::getMigrationNotice() );
 		echo wp_kses_post( self::getSettingsContent() );
 		echo '</div></div>';
 	}
@@ -54,6 +56,7 @@ class Settings {
 			return;
 		}
 
+		$asset = self::getReactBuildAsset();
 		$main_css = self::pluginDir() . '/react/build/static/css/main.css';
 		$main_js = self::pluginDir() . '/react/build/static/js/main.js';
 
@@ -61,8 +64,8 @@ class Settings {
 			wp_enqueue_style(
 				'cf7-vk-admin-styles',
 				self::pluginUrl() . '/react/build/static/css/main.css',
-				null,
-				CF7VK_VERSION
+				[],
+				$asset['version']
 			);
 		}
 
@@ -70,8 +73,8 @@ class Settings {
 			wp_enqueue_script(
 				'cf7-vk-admin',
 				self::pluginUrl() . '/react/build/static/js/main.js',
-				[ 'wp-i18n' ],
-				CF7VK_VERSION,
+				$asset['dependencies'],
+				$asset['version'],
 				true
 			);
 			wp_set_script_translations( 'cf7-vk-admin', 'message-bridge-for-contact-form-7-and-vk' );
@@ -101,6 +104,54 @@ class Settings {
 		return '<div id="settings-content"></div>';
 	}
 
+	private static function getMigrationNotice(): string {
+		$migration = Migration::getAdminRecoveryState();
+
+		if ( ! empty( $migration['is_scheduled'] ) || ! empty( $migration['is_running'] ) ) {
+			return sprintf(
+				'<div class="notice cf7vk-notice notice-info"><p>%s</p></div>',
+				esc_html__( 'Data migration is in progress. Please reload the page after a few seconds.', 'message-bridge-for-contact-form-7-and-vk' )
+			);
+		}
+
+		if ( ! empty( $migration['is_failed'] ) ) {
+			return sprintf(
+				'<div class="notice cf7vk-notice notice-error"><p>%s</p></div>',
+				esc_html__( 'Data migration failed. You can retry it below.', 'message-bridge-for-contact-form-7-and-vk' )
+			);
+		}
+
+		return '';
+	}
+
+	private static function getReactBuildAsset(): array {
+		$asset_path = self::pluginDir() . '/react/build/static/js/main.asset.php';
+		$asset = file_exists( $asset_path ) ? include $asset_path : [];
+
+		if ( ! is_array( $asset ) ) {
+			$asset = [];
+		}
+
+		$dependencies = $asset['dependencies'] ?? [];
+
+		if ( ! is_array( $dependencies ) ) {
+			$dependencies = [];
+		}
+
+		$dependencies = array_values(
+			array_filter(
+				$dependencies,
+				static fn( $dependency ): bool => is_string( $dependency ) && '' !== $dependency
+			)
+		);
+		$dependencies[] = 'wp-i18n';
+
+		return [
+			'dependencies' => array_values( array_unique( $dependencies ) ),
+			'version'      => isset( $asset['version'] ) && is_string( $asset['version'] ) ? $asset['version'] : CF7VK_VERSION,
+		];
+	}
+
 	private static function getScriptData(): array {
 		return [
 			'routes' => [
@@ -117,6 +168,7 @@ class Settings {
 				'forms' => get_rest_url( null, 'contact-form-7/v1/contact-forms/' ),
 			],
 			'nonce' => wp_create_nonce( 'wp_rest' ),
+			'migrationRecovery' => Migration::getAdminRecoveryState(),
 			'phrases' => [
 				'emptySecret' => Bot::getEmptySecret(),
 			],

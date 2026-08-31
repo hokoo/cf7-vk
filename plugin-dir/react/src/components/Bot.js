@@ -9,6 +9,7 @@ import {
     apiFetchUpdates,
     apiPingBot,
     apiSaveBot,
+    apiSaveBotCredentials,
     apiSetBotChatStatus
 } from '../utils/api';
 
@@ -83,11 +84,13 @@ const Bot = ({
     bot,
     chats = [],
     bot2ChatConnections = [],
+    chatDataStatus = 'ready',
     onBotSaved,
     onBotRemoved,
     refreshBots,
     refreshBotRuntime,
     refreshBotChatConnections,
+    refreshBotChannelConnections,
     refreshChatChannelConnections
 }) => {
     const persistedGroupId = bot.groupId || '';
@@ -228,6 +231,7 @@ const Bot = ({
 
             try {
                 const result = await apiFetchUpdates(bot.id);
+                const hasTransientError = Boolean(result?.transientError);
                 const hasLinkedDialogChanges = Boolean(result?.hasNewChats || result?.hasNewConnections);
                 const shouldRefreshBotState = Boolean(result?.failed);
                 const wasSkippedByLock = Boolean(result?.locked);
@@ -240,6 +244,19 @@ const Bot = ({
                     scheduleNextPoll(RETRY_DELAY_MS);
                     return;
                 }
+
+                if (hasTransientError) {
+                    setFeedback({
+                        type: 'error',
+                        source: 'polling',
+                        message: result?.error?.message || wp.i18n.__( 'VK updates could not be checked.', 'message-bridge-for-contact-form-7-and-vk' )
+                    });
+                    await refreshBotsRef.current();
+                    scheduleNextPoll(RETRY_DELAY_MS);
+                    return;
+                }
+
+                setFeedback((current) => 'polling' === current?.source ? null : current);
 
                 if (hasLinkedDialogChanges) {
                     await refreshBotRuntimeRef.current();
@@ -257,6 +274,7 @@ const Bot = ({
 
                 setFeedback({
                     type: 'error',
+                    source: 'polling',
                     message: error.message
                 });
                 await refreshBotsRef.current();
@@ -352,6 +370,7 @@ const Bot = ({
 
         const previousForm = cloneForm(lastSavedFormRef.current);
         const connectionSettingsChanged = didConnectionSettingsChange(previousForm, nextForm);
+        const attemptedSnapshot = nextSnapshot;
 
         isSavingRef.current = true;
         setSaving(true);
@@ -361,15 +380,30 @@ const Bot = ({
         }
 
         try {
-            const savedBot = await apiSaveBot(bot.id, nextForm);
+            let credentialResult = null;
+            const savedBot = connectionSettingsChanged
+                ? (
+                    (credentialResult = await apiSaveBotCredentials(bot.id, nextForm))?.bot ||
+                    credentialResult
+                )
+                : await apiSaveBot(bot.id, nextForm);
 
             lastSavedFormRef.current = nextForm;
             lastSavedSnapshotRef.current = nextSnapshot;
             onBotSaved(savedBot);
 
             if (connectionSettingsChanged) {
+                if (credentialResult?.identityChanged || credentialResult?.relationsReset) {
+                    await Promise.all([
+                        refreshBotChatConnections(),
+                        refreshBotChannelConnections?.()
+                    ]);
+                }
+
                 if (hasConfiguredConnection(savedBot, nextForm)) {
-                    await runPing();
+                    setFeedback(null);
+                    setPollingEnabled(Boolean(credentialResult?.longPollReady));
+                    await refreshBots();
                 } else {
                     setFeedback(null);
                     await refreshBots();
@@ -384,7 +418,8 @@ const Bot = ({
             isSavingRef.current = false;
             setSaving(false);
 
-            if (serializeForm(formRef.current) !== lastSavedSnapshotRef.current) {
+            const currentSnapshot = serializeForm(formRef.current);
+            if (currentSnapshot !== attemptedSnapshot && currentSnapshot !== lastSavedSnapshotRef.current) {
                 scheduleImmediateSave();
             }
         }
@@ -470,6 +505,11 @@ const Bot = ({
             await apiDeleteBot(bot.id);
             removed = true;
             onBotRemoved(bot.id);
+        } catch (error) {
+            setFeedback({
+                type: 'error',
+                message: error.message || wp.i18n.__( 'Failed to remove bot', 'message-bridge-for-contact-form-7-and-vk' )
+            });
         } finally {
             if (!removed) {
                 setSaving(false);
@@ -561,6 +601,7 @@ const Bot = ({
             statusClass={statusClass}
             chatsForBot={chatsForBot}
             bot2ChatConnections={bot2ChatConnections}
+            chatDataStatus={chatDataStatus}
             updateField={updateField}
             remove={remove}
             handleFieldBlur={scheduleImmediateSave}

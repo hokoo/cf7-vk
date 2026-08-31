@@ -34,6 +34,9 @@ class Bot extends Entity implements wpPostAble {
 	public const DEFAULT_AUTH_COMMAND = 'start';
 	public const EMPTY_SECRET_MASK = '[%s]';
 	public const LONG_POLL_WAIT = 25;
+	public const FETCH_UPDATES_LOCK_KEY_PATTERN = 'cf7vk_fetch_updates_lock_%d';
+	public const FETCH_UPDATES_LOCK_PREFIX = 'cf7vk_fetch_updates_lock_';
+	public const FETCH_UPDATES_LOCK_TTL = 60;
 	private ?VkApi $api = null;
 
 	/**
@@ -219,6 +222,18 @@ class Bot extends Entity implements wpPostAble {
 		$this->savePost();
 
 		return $this;
+	}
+
+	public function getCommunityId(): string {
+		return (string) $this->getParam( 'communityId' );
+	}
+
+	public function getCommunityName(): string {
+		return (string) $this->getParam( 'communityName' );
+	}
+
+	public function getCommunityScreenName(): string {
+		return (string) $this->getParam( 'communityScreenName' );
 	}
 
 	/**
@@ -431,6 +446,92 @@ class Bot extends Entity implements wpPostAble {
 		}
 	}
 
+	/**
+	 * @throws TransportNotConfigured
+	 * @throws VkApiException
+	 * @throws wppaSavePostException
+	 */
+	public function updateCredentials(
+		string $group_id,
+		string $access_token,
+		string $api_version = self::DEFAULT_API_VERSION,
+		?string $auth_command = null
+	): array {
+		$group_id = self::normalizeGroupIdValue( $group_id );
+		$access_token = trim( $access_token );
+		$api_version = trim( $api_version ) ?: self::DEFAULT_API_VERSION;
+
+		if ( self::isMaskedSecretValue( $access_token ) ) {
+			$access_token = (string) $this->getAccessToken();
+		}
+
+		if ( $this->isAccessTokenDefined() ) {
+			$access_token = (string) $this->getAccessToken();
+		}
+
+		if ( $this->isGroupIdDefined() ) {
+			$group_id = self::normalizeGroupIdValue( $this->getGroupId() );
+		}
+
+		$api = new VkApi( $access_token, $api_version );
+		$community = $api->getCommunity( $group_id );
+		$community_id = $this->resolveCommunityId( $community, $group_id );
+		$community_screen_name = (string) ( $community['screen_name'] ?? '' );
+		$community_name = trim( (string) ( $community['name'] ?? $community_screen_name ?: $this->getTitle() ) );
+		$long_poll = $api->getLongPollServer( $group_id );
+		$long_poll_server = trim( (string) ( $long_poll['server'] ?? '' ) );
+		$long_poll_key = trim( (string) ( $long_poll['key'] ?? '' ) );
+		$long_poll_ts = trim( (string) ( $long_poll['ts'] ?? '' ) );
+
+		if ( '' === $long_poll_server || '' === $long_poll_key || '' === $long_poll_ts ) {
+			// Exception payloads are retained for diagnostics and are not rendered here.
+			// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+			throw VkApiException::missingResponsePayload( $long_poll );
+		}
+
+		$previous_identity = $this->getCommunityId() ?: self::normalizeGroupIdOrEmpty( $this->getGroupId() );
+		$identity_changed = '' !== $previous_identity && $previous_identity !== $community_id;
+		$timestamp = gmdate( 'c' );
+
+		$this->setParam( 'groupId', $group_id );
+		$this->setParam( 'apiVersion', $api_version );
+		$this->setParam( 'communityId', $community_id );
+		$this->setParam( 'communityName', $community_name );
+		$this->setParam( 'communityScreenName', $community_screen_name );
+		$this->setParam( 'longPollServer', $long_poll_server );
+		$this->setParam( 'longPollKey', $long_poll_key );
+		$this->setParam( 'longPollTs', $long_poll_ts );
+		$this->setParam( 'lastSyncAt', $timestamp );
+		$this->setParam( 'lastStatus', self::STATUS_ONLINE );
+
+		if ( ! $this->isAccessTokenDefined() ) {
+			$this->setParam( 'accessToken', $access_token );
+		}
+
+		if ( null !== $auth_command ) {
+			$this->setParam( 'authCommand', trim( $auth_command ) ?: self::DEFAULT_AUTH_COMMAND );
+		}
+
+		$this->savePost();
+		$this->api = null;
+		$this->persistCommunityTitle( $community_name );
+
+		$relations_reset = $identity_changed ? $this->resetBotOwnedRelations() : 0;
+
+		return [
+			'groupId' => $group_id,
+			'communityId' => $community_id,
+			'communityName' => $community_name,
+			'communityScreenName' => $community_screen_name,
+			'longPollReady' => true,
+			'longPollServer' => $long_poll_server,
+			'longPollTs' => $long_poll_ts,
+			'lastSyncAt' => $timestamp,
+			'identityChanged' => $identity_changed,
+			'relationsReset' => $relations_reset,
+		];
+	}
+
 	private function persistCommunityTitle( string $community_name ): void {
 		$community_name = trim( $community_name );
 
@@ -485,18 +586,31 @@ class Bot extends Entity implements wpPostAble {
 			'hasNewConnections' => false,
 			'failed' => 0,
 			'locked' => true,
+			'cleanupLocked' => false,
 			'ts' => $this->getLongPollTs(),
 			'updatesCount' => 0,
+			'errorCount' => 0,
+			'processingErrors' => [],
+			'transientError' => false,
+			'error' => null,
+			'cursorAdvanced' => false,
 		];
+
+		if ( Maintenance::hasCleanupLock() ) {
+			return array_merge( $empty_result, [ 'cleanupLocked' => true ] );
+		}
 
 		if ( ! $this->acquireFetchUpdatesLock() ) {
 			return $empty_result;
 		}
 
 		try {
-			$this->ensureLongPollBootstrap();
+			if ( Maintenance::hasCleanupLock() ) {
+				return array_merge( $empty_result, [ 'cleanupLocked' => true ] );
+			}
 
 			try {
+				$this->ensureLongPollBootstrap();
 				$response = $this->getApi()->checkLongPoll(
 					$this->getLongPollServer(),
 					$this->getLongPollKey(),
@@ -513,7 +627,7 @@ class Bot extends Entity implements wpPostAble {
 					]
 				);
 
-				throw $e;
+				return $this->transportFailureResult( $empty_result, $e );
 			}
 
 			$failed = (int) ( $response['failed'] ?? 0 );
@@ -537,12 +651,33 @@ class Bot extends Entity implements wpPostAble {
 					'hasNewConnections' => false,
 					'failed' => 1,
 					'locked' => false,
+					'cleanupLocked' => false,
 					'ts' => $new_ts,
+					'updatesCount' => 0,
+					'errorCount' => 0,
+					'processingErrors' => [],
+					'transientError' => false,
+					'error' => null,
+					'cursorAdvanced' => '' !== $new_ts,
 				];
 			}
 
 			if ( 2 === $failed || 3 === $failed ) {
-				$this->refreshLongPollBootstrap();
+				try {
+					$this->refreshLongPollBootstrap();
+				} catch ( VkApiException $e ) {
+					$this->markTransportFailure(
+						$e,
+						'VK Long Poll bootstrap refresh failed.',
+						Logger::LEVEL_WARNING,
+						[
+							'groupId' => $this->getGroupId(),
+							'failed' => $failed,
+						]
+					);
+
+					return $this->transportFailureResult( $empty_result, $e, $failed );
+				}
 
 				return [
 					'updates' => [],
@@ -550,29 +685,51 @@ class Bot extends Entity implements wpPostAble {
 					'hasNewConnections' => false,
 					'failed' => $failed,
 					'locked' => false,
+					'cleanupLocked' => false,
 					'ts' => $this->getLongPollTs(),
+					'updatesCount' => 0,
+					'errorCount' => 0,
+					'processingErrors' => [],
+					'transientError' => false,
+					'error' => null,
+					'cursorAdvanced' => true,
 				];
 			}
 
 			$updates = is_array( $response['updates'] ?? null ) ? $response['updates'] : [];
 			$new_ts = (string) ( $response['ts'] ?? $this->getLongPollTs() );
 			$processed = $this->processLongPollUpdates( $updates );
+			$error_count = (int) ( $processed['errorCount'] ?? 0 );
+			$cursor_advanced = 0 === $error_count;
 
-			$this->persistStateSafely(
-				[
-					'longPollTs' => $new_ts,
-					'lastSyncAt' => gmdate( 'c' ),
-					'lastStatus' => self::STATUS_ONLINE,
-				]
-			);
+			if ( $cursor_advanced ) {
+				$this->persistStateSafely(
+					[
+						'longPollTs' => $new_ts,
+						'lastSyncAt' => gmdate( 'c' ),
+						'lastStatus' => self::STATUS_ONLINE,
+					]
+				);
+			} else {
+				$this->persistStateSafely(
+					[
+						'lastStatus' => self::STATUS_ONLINE,
+					]
+				);
+			}
 
 			return array_merge(
 				$processed,
 				[
 					'failed' => 0,
 					'locked' => false,
-					'ts' => $new_ts,
+					'cleanupLocked' => false,
+					'ts' => $cursor_advanced ? $new_ts : $this->getLongPollTs(),
+					'nextTs' => $new_ts,
 					'updatesCount' => count( $updates ),
+					'transientError' => false,
+					'error' => null,
+					'cursorAdvanced' => $cursor_advanced,
 				]
 			);
 		} finally {
@@ -640,8 +797,11 @@ class Bot extends Entity implements wpPostAble {
 	 * @throws TransportNotConfigured
 	 */
 	private function getNormalizedGroupId(): string {
-		$group_id = trim( $this->getGroupId() );
+		return self::normalizeGroupIdValue( $this->getGroupId() );
+	}
 
+	private static function normalizeGroupIdValue( string $group_id ): string {
+		$group_id = trim( $group_id );
 		if ( '' === $group_id ) {
 			throw TransportNotConfigured::missingGroupId();
 		}
@@ -651,6 +811,58 @@ class Bot extends Entity implements wpPostAble {
 		}
 
 		return ltrim( $group_id, '-' );
+	}
+
+	private static function normalizeGroupIdOrEmpty( string $group_id ): string {
+		try {
+			return self::normalizeGroupIdValue( $group_id );
+		} catch ( TransportNotConfigured $e ) {
+			return '';
+		}
+	}
+
+	private function resolveCommunityId( array $community, string $group_id ): string {
+		$identity = trim( (string) ( $community['id'] ?? '' ) );
+
+		return '' !== $identity ? ltrim( $identity, '-' ) : $group_id;
+	}
+
+	private function resetBotOwnedRelations(): int {
+		$connection_ids = array_values(
+			array_filter(
+				array_map(
+					'intval',
+					Util::getWPDB()->get_col(
+						Util::getWPDB()->prepare(
+							'SELECT ID FROM ' . Util::getWPDB()->prefix . 'post_connections_cf7_vk WHERE relation IN (%s, %s) AND `from` = %d',
+							Client::BOT2CHAT,
+							Client::BOT2CHANNEL,
+							$this->getPost()->ID
+						)
+					)
+				)
+			)
+		);
+
+		if ( empty( $connection_ids ) ) {
+			return 0;
+		}
+
+		$placeholders = implode( ', ', array_fill( 0, count( $connection_ids ), '%d' ) );
+		Util::getWPDB()->query(
+			Util::getWPDB()->prepare(
+				'DELETE FROM ' . Util::getWPDB()->prefix . 'post_connections_meta_cf7_vk WHERE connection_id IN (' . $placeholders . ')',
+				$connection_ids
+			)
+		);
+		Util::getWPDB()->query(
+			Util::getWPDB()->prepare(
+				'DELETE FROM ' . Util::getWPDB()->prefix . 'post_connections_cf7_vk WHERE ID IN (' . $placeholders . ')',
+				$connection_ids
+			)
+		);
+
+		return count( $connection_ids );
 	}
 
 	private function persistStateSafely( array $params ): void {
@@ -700,6 +912,23 @@ class Bot extends Entity implements wpPostAble {
 		);
 	}
 
+	private function transportFailureResult( array $empty_result, VkApiException $exception, int $failed = 0 ): array {
+		return array_merge(
+			$empty_result,
+			[
+				'failed' => $failed,
+				'locked' => false,
+				'cleanupLocked' => false,
+				'transientError' => true,
+				'error' => [
+					'type' => 0 !== (int) $exception->getCode() ? 'vk_api' : 'transport',
+					'code' => (int) $exception->getCode(),
+					'message' => LogRedactor::redactString( $exception->getMessage() ),
+				],
+			]
+		);
+	}
+
 	/**
 	 * @throws TransportNotConfigured
 	 * @throws VkApiException
@@ -736,10 +965,10 @@ class Bot extends Entity implements wpPostAble {
 	}
 
 	private function getFetchUpdatesLockKey(): string {
-		return sprintf( 'cf7vk_fetch_updates_lock_%d', $this->getPost()->ID );
+		return sprintf( self::FETCH_UPDATES_LOCK_KEY_PATTERN, $this->getPost()->ID );
 	}
 
-	private function acquireFetchUpdatesLock( int $ttl = 60 ): bool {
+	private function acquireFetchUpdatesLock( int $ttl = self::FETCH_UPDATES_LOCK_TTL ): bool {
 		$lock_key = $this->getFetchUpdatesLockKey();
 		$locked_at = (int) get_option( $lock_key, 0 );
 		$now = time();
@@ -768,7 +997,11 @@ class Bot extends Entity implements wpPostAble {
 			'updates' => [],
 			'hasNewChats' => false,
 			'hasNewConnections' => false,
+			'errorCount' => 0,
+			'processingErrors' => [],
+			'duplicatePeerIds' => 0,
 		];
+		$processed_peer_ids = [];
 
 		foreach ( $updates as $update ) {
 			if ( ! is_array( $update ) ) {
@@ -776,6 +1009,12 @@ class Bot extends Entity implements wpPostAble {
 			}
 
 			if ( 'message_new' !== ( $update['type'] ?? '' ) ) {
+				continue;
+			}
+
+			$peer_id = $this->extractUpdatePeerId( $update );
+			if ( '' !== $peer_id && isset( $processed_peer_ids[ $peer_id ] ) ) {
+				$result['duplicatePeerIds']++;
 				continue;
 			}
 
@@ -801,12 +1040,23 @@ class Bot extends Entity implements wpPostAble {
 					'VK Long Poll update processing failed.',
 					Logger::LEVEL_WARNING
 				);
+				$result['errorCount']++;
+				$result['processingErrors'][] = [
+					'eventId' => (string) ( $update['event_id'] ?? '' ),
+					'messageId' => (string) ( $message['id'] ?? '' ),
+					'type' => get_class( $e ),
+					'message' => LogRedactor::redactString( $e->getMessage() ),
+				];
 
 				continue;
 			}
 
 			if ( empty( $processed ) ) {
 				continue;
+			}
+
+			if ( '' !== $peer_id ) {
+				$processed_peer_ids[ $peer_id ] = true;
 			}
 
 			$result['updates'][] = $processed;
@@ -839,8 +1089,8 @@ class Bot extends Entity implements wpPostAble {
 
 		$peer_id = (string) ( $message['peer_id'] ?? '' );
 		$user_id = (int) ( $message['from_id'] ?? 0 );
-		$profile = $this->fetchUserProfile( $user_id );
-		$conversation = $this->fetchConversationData( $message );
+		$profile = $this->fetchOptionalUserProfile( $user_id, $message );
+		$conversation = $this->fetchOptionalConversationData( $message );
 		$existing_chat = '' !== $peer_id ? Util::getChatByPeerId( $peer_id ) : null;
 		$chat = Util::createOrUpdateChatFromVkMessage( $message, $profile, $conversation );
 		$has_new_chat = null === $existing_chat;
@@ -890,5 +1140,48 @@ class Bot extends Entity implements wpPostAble {
 		}
 
 		return $this->getApi()->getConversationByMessage( $peer_id, $conversation_message_id );
+	}
+
+	private function fetchOptionalUserProfile( int $user_id, array $message ): array {
+		try {
+			return $this->fetchUserProfile( $user_id );
+		} catch ( VkApiException $e ) {
+			$this->logOptionalLookupFailure( 'profile_lookup', $message, $e );
+			return [];
+		}
+	}
+
+	private function fetchOptionalConversationData( array $message ): array {
+		try {
+			return $this->fetchConversationData( $message );
+		} catch ( VkApiException $e ) {
+			$this->logOptionalLookupFailure( 'conversation_lookup', $message, $e );
+			return [];
+		}
+	}
+
+	private function logOptionalLookupFailure( string $stage, array $message, VkApiException $exception ): void {
+		$this->logger->write(
+			[
+				'botTitle' => $this->getTitle(),
+				'wpPostID' => $this->getPost()->ID,
+				'groupId' => $this->getGroupId(),
+				'stage' => $stage,
+				'userId' => (string) ( $message['from_id'] ?? '' ),
+				'peerId' => (string) ( $message['peer_id'] ?? '' ),
+				'conversationMessageId' => (string) ( $message['conversation_message_id'] ?? '' ),
+				'error' => $exception->getMessage(),
+			],
+			'VK Long Poll optional lookup failed.',
+			Logger::LEVEL_WARNING
+		);
+	}
+
+	private function extractUpdatePeerId( array $update ): string {
+		$message = isset( $update['object']['message'] ) && is_array( $update['object']['message'] )
+			? $update['object']['message']
+			: [];
+
+		return trim( (string) ( $message['peer_id'] ?? '' ) );
 	}
 }

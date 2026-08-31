@@ -31,7 +31,8 @@ const Channel = ({
     onChannelRemoved,
     refreshBotChannelConnections,
     refreshChatChannelConnections,
-    refreshFormChannelConnections
+    refreshFormChannelConnections,
+    dataAvailability = {forms: 'ready', bots: 'ready', chats: 'ready'}
 }) => {
     const [titleValue, setTitleValue] = useState(channel.title?.rendered || '');
     const [saving, setSaving] = useState(false);
@@ -153,6 +154,7 @@ const Channel = ({
 
     const handleBotSelect = async (selectedOption) => {
         setSaving(true);
+        setError(null);
 
         try {
             if (botConnection) {
@@ -164,6 +166,8 @@ const Channel = ({
             }
 
             await refreshBotChannelConnections();
+        } catch (err) {
+            setError(wp.i18n.__( 'Failed to update bot', 'message-bridge-for-contact-form-7-and-vk' ));
         } finally {
             setSaving(false);
         }
@@ -175,10 +179,13 @@ const Channel = ({
         }
 
         setSaving(true);
+        setError(null);
 
         try {
             await apiDisconnectBotFromChannel(botConnection.data.id);
             await refreshBotChannelConnections();
+        } catch (err) {
+            setError(wp.i18n.__( 'Failed to remove bot', 'message-bridge-for-contact-form-7-and-vk' ));
         } finally {
             setSaving(false);
         }
@@ -193,10 +200,13 @@ const Channel = ({
         }
 
         setSaving(true);
+        setError(null);
 
         try {
             await apiConnectFormToChannel(selectedOption.value, channel.id);
             await refreshFormChannelConnections();
+        } catch (err) {
+            setError(wp.i18n.__( 'Failed to assign form', 'message-bridge-for-contact-form-7-and-vk' ));
         } finally {
             setSaving(false);
             setShowFormSelector(false);
@@ -213,10 +223,13 @@ const Channel = ({
         }
 
         setSaving(true);
+        setError(null);
 
         try {
             await apiDisconnectFormFromChannel(connection.data.id);
             await refreshFormChannelConnections();
+        } catch (err) {
+            setError(wp.i18n.__( 'Failed to remove form', 'message-bridge-for-contact-form-7-and-vk' ));
         } finally {
             setSaving(false);
         }
@@ -232,6 +245,7 @@ const Channel = ({
         }
 
         setSaving(true);
+        setError(null);
 
         try {
             if (connection) {
@@ -241,6 +255,8 @@ const Channel = ({
             }
 
             await refreshChatChannelConnections();
+        } catch (err) {
+            setError(wp.i18n.__( 'Failed to update dialog', 'message-bridge-for-contact-form-7-and-vk' ));
         } finally {
             setSaving(false);
         }
@@ -254,11 +270,14 @@ const Channel = ({
         let removed = false;
 
         setSaving(true);
+        setError(null);
 
         try {
             await apiDeleteChannel(channel.id);
             removed = true;
             onChannelRemoved(channel.id);
+        } catch (err) {
+            setError(wp.i18n.__( 'Failed to remove channel', 'message-bridge-for-contact-form-7-and-vk' ));
         } finally {
             if (!removed) {
                 setSaving(false);
@@ -303,6 +322,7 @@ const Channel = ({
             deleteChannel={deleteChannel}
             getToggleButtonLabel={getToggleButtonLabel}
             renderChannelClasses={renderChannelClasses}
+            dataAvailability={dataAvailability}
         />
     );
 };

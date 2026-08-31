@@ -3,7 +3,7 @@
 import React, {useState} from 'react';
 import {apiCreateBot} from '../utils/api';
 
-const NewBot = ({onCreated}) => {
+const NewBot = ({onCreated, disabled = false}) => {
     const [saving, setSaving] = useState(false);
 
     const handleCreateBot = async () => {
@@ -12,8 +12,6 @@ const NewBot = ({onCreated}) => {
         try {
             const createdBot = await apiCreateBot({
                 title: wp.i18n.__( 'VK Bot', 'message-bridge-for-contact-form-7-and-vk' ),
-                groupId: '',
-                accessToken: '',
                 authCommand: 'start'
             });
             onCreated(createdBot);
@@ -26,7 +24,12 @@ const NewBot = ({onCreated}) => {
     };
 
     return (
-        <button className="add-button add-bot-button" onClick={handleCreateBot} disabled={saving}>
+        <button
+            className="add-button add-bot-button"
+            data-testid="cf7vk-create-bot"
+            onClick={handleCreateBot}
+            disabled={saving || disabled}
+        >
             {wp.i18n.__( 'Create Bot', 'message-bridge-for-contact-form-7-and-vk' )}
         </button>
     );

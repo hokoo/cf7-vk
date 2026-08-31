@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "plugin_slug": "message-bridge-for-contact-form-7-and-vk",
+  "entrypoint": "cf7-vk.php",
+  "legacy_slug_aliases": [
+    "cf7-vk"
+  ],
+  "release_assumptions": {
+    "wordpress_org_artifacts": [
+      "0.1.3",
+      "0.1.4"
+    ],
+    "github_release_artifacts": [
+      "0.1.0",
+      "0.1.1"
+    ],
+    "public_artifact_not_found": [
+      "0.1.2"
+    ],
+    "local_tag_build_artifacts": [
+      "0.1.2"
+    ],
+    "note": "0.1.0 used the old ZIP root cf7-vk and text domain vk-notifications-for-contact-form-7. 0.1.1 and newer use message-bridge-for-contact-form-7-and-vk. A public installable ZIP for 0.1.2 was not found during the 2026-08-31 Stability analysis; the smoke harness builds an installable artifact from the local git tag for lifecycle coverage."
+  },
+  "candidate": {
+    "source_priority": [
+      "CF7VK_CANDIDATE_ZIP",
+      "dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip",
+      "scripts/build-release-zip.sh"
+    ],
+    "override_env": "CF7VK_CANDIDATE_ZIP",
+    "expected_version_env": "CF7VK_EXPECTED_CANDIDATE_VERSION",
+    "expected_version": "1.0.0",
+    "header_path_in_zip": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
+    "plugin_basename": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php"
+  },
+  "support_contract": {
+    "requires_wordpress": "6.0",
+    "requires_php": ">=8.1",
+    "candidate_expected_version": "1.0.0",
+    "lifecycle_cases": [
+      "fresh",
+      "upgrade-v-0.1.0",
+      "upgrade-v-0.1.1",
+      "upgrade-v-0.1.2",
+      "upgrade-v-0.1.3",
+      "upgrade-v-0.1.4"
+    ],
+    "notes": [
+      "The current candidate declares PHP 8.1 even though early 0.1.x readmes declared PHP 8.0.",
+      "0.1.2 upgrade evidence uses a local git-tag build because no public installable ZIP was found.",
+      "The release support matrix pins Contact Form 7 versions so release gates do not change behavior when WordPress.org updates the latest CF7 package."
+    ]
+  },
+  "support_matrix": [
+    {
+      "matrix_id": "minimum-wp60-php81-cf7-577",
+      "label": "minimum",
+      "required": true,
+      "wordpress_version": "6.0",
+      "php_version": "8.1",
+      "wp_cli_image": "wordpress:cli-php8.1",
+      "contact_form_7_version": "5.7.7",
+      "cases": [
+        "fresh",
+        "upgrade-v-0.1.4"
+      ]
+    },
+    {
+      "matrix_id": "current-wp71-php83-cf7-617",
+      "label": "current",
+      "required": true,
+      "wordpress_version": "7.1",
+      "php_version": "8.3",
+      "wp_cli_image": "wordpress:cli-php8.3",
+      "contact_form_7_version": "6.1.7",
+      "cases": [
+        "fresh",
+        "upgrade-v-0.1.0",
+        "upgrade-v-0.1.1",
+        "upgrade-v-0.1.2",
+        "upgrade-v-0.1.3",
+        "upgrade-v-0.1.4"
+      ]
+    }
+  ],
+  "legacy_versions": [
+    {
+      "matrix_id": "v-0.1.0",
+      "version": "0.1.0",
+      "source_type": "github_release",
+      "url": "https://github.com/hokoo/cf7-vk/releases/download/v-0.1.0/cf7-vk-wp-plugin.zip",
+      "sha256": "dd5ed6861eb0c96987212d3fb419cab00a6d3fe26d37b382e9d95e7b28d8aea7",
+      "root_dir": "cf7-vk",
+      "plugin_basename": "cf7-vk/cf7-vk.php",
+      "header_path_in_zip": "cf7-vk/cf7-vk.php",
+      "tag": "v-0.1.0",
+      "tag_object": "dc3e6ab440b173142e03fa36c480b5c9091f0a9b",
+      "tag_commit": "dc3e6ab440b173142e03fa36c480b5c9091f0a9b",
+      "note": "Old public root and old text domain."
+    },
+    {
+      "matrix_id": "v-0.1.1",
+      "version": "0.1.1",
+      "source_type": "github_release",
+      "url": "https://github.com/hokoo/cf7-vk/releases/download/v-0.1.1/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip",
+      "sha256": "ac0af87193a639e6e545718f347b1eb8d75dc891bb4e1cb14af95df17b9259db",
+      "root_dir": "message-bridge-for-contact-form-7-and-vk",
+      "plugin_basename": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
+      "header_path_in_zip": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
+      "tag": "v-0.1.1",
+      "tag_object": "86b7ec80829ca0da8897cfe09a102cb4fe482e74",
+      "tag_commit": "86b7ec80829ca0da8897cfe09a102cb4fe482e74"
+    },
+    {
+      "matrix_id": "v-0.1.2",
+      "version": "0.1.2",
+      "source_type": "local_git_tag",
+      "url": null,
+      "sha256": null,
+      "root_dir": "message-bridge-for-contact-form-7-and-vk",
+      "plugin_basename": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
+      "header_path_in_zip": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
+      "tag": "v-0.1.2",
+      "tag_object": "f6e12aea940342ebc324ddcaba3d39f319e595fe",
+      "tag_commit": "e51ef2106898512c33d834bb50a9e8baf3d1bda0",
+      "available_for_default_smoke": false,
+      "note": "Public installable ZIP not found on WordPress.org or the inspected GitHub release asset names."
+    },
+    {
+      "matrix_id": "v-0.1.3",
+      "version": "0.1.3",
+      "source_type": "wordpress_org",
+      "url": "https://downloads.wordpress.org/plugin/message-bridge-for-contact-form-7-and-vk.0.1.3.zip",
+      "sha256": "d6a80065d56f23ebb3e6d1a7bf928f5489934593fc586855aa52441f219367bf",
+      "root_dir": "message-bridge-for-contact-form-7-and-vk",
+      "plugin_basename": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
+      "header_path_in_zip": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
+      "tag": "v-0.1.3",
+      "tag_object": "5e9dd9ef8601350d6eed12912023f1d69b8214be",
+      "tag_commit": "5e9dd9ef8601350d6eed12912023f1d69b8214be"
+    },
+    {
+      "matrix_id": "v-0.1.4",
+      "version": "0.1.4",
+      "source_type": "wordpress_org",
+      "url": "https://downloads.wordpress.org/plugin/message-bridge-for-contact-form-7-and-vk.0.1.4.zip",
+      "sha256": "ead46ec71761bae5f7796b5c3022166f98200e1200394696b4e820d2141d8dbb",
+      "root_dir": "message-bridge-for-contact-form-7-and-vk",
+      "plugin_basename": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
+      "header_path_in_zip": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
+      "tag": "v-0.1.4",
+      "tag_object": "22e21e9b17d4d7109889c91d260c4c9662001cf0",
+      "tag_commit": "22e21e9b17d4d7109889c91d260c4c9662001cf0",
+      "note": "Current WordPress.org production baseline before this hardening work."
+    }
+  ],
+  "wordpress": {
+    "core_version_env": "CF7VK_E1_WP_VERSION",
+    "default_core_version": "latest",
+    "cli_image_env": "CF7VK_E1_WP_CLI_IMAGE",
+    "default_cli_image": "wordpress:cli-php8.3"
+  },
+  "dependencies": {
+    "contact_form_7": {
+      "wp_org_slug": "contact-form-7",
+      "version_env": "CF7VK_E1_CF7_VERSION",
+      "default_version": "latest"
+    }
+  }
+}

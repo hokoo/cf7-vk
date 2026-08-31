@@ -21,4 +21,4 @@ npm run build
 npm test -- --watch=false
 ```
 
-The build copies hashed CRA assets into stable `main.js` and `main.css` filenames so WordPress can enqueue deterministic paths from PHP.
+The build emits stable `main.js`, `main.css`, `main.asset.php`, and `settings-content.html` files so WordPress can enqueue deterministic assets from PHP.
