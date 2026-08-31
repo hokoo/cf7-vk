@@ -39,7 +39,8 @@ Execution status as of 2026-08-31:
 - `T13`: completed; admin bootstrap now keeps independent resource state, preserves loaded sections across unrelated REST failures, exposes targeted load errors, retries only failed resources, disables dependency-gated controls, and wraps the settings app in an error boundary.
 - `T14`: completed; admin mutations now have focused component coverage, stable browser selectors, safer failed delete/relation handling, channel removal relation cleanup evidence, preserved failed-save snapshots, and polling retry feedback cleanup.
 - `T15`: completed; admin styles are page-scoped, plugin-owned notices are preserved, and duplicate server-side React roots are removed.
-- `T16`: todo; unblocked by completed `T12` and `T13`.
+- `T16`: completed; React build/test tooling now uses `@wordpress/scripts`, emits `main.asset.php`, and PHP enqueues asset dependencies/version from that metadata.
+- `T17`: todo; unblocked by completed `T16`.
 
 Completed first execution batch after approval:
 
@@ -48,7 +49,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T16. Migrate React Build To WordPress Scripts`
+- `T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -1228,7 +1229,7 @@ Notes/Risks:
 
 ## T16. Migrate React Build To WordPress Scripts
 
-Status: todo
+Status: completed
 
 Goal: align the admin asset build with the hardened Telegram release path and reduce CRA-specific release fragility.
 
@@ -1272,10 +1273,45 @@ Dependencies:
 Notes/Risks:
 
 - This can be moved earlier if CRA blocks React tests. If moved earlier, re-run all React tests after `T12` and `T13`.
+- Implemented files:
+  - updates to `plugin-dir/react/package.json`;
+  - updates to `plugin-dir/react/package-lock.json`;
+  - `plugin-dir/react/webpack.config.js`;
+  - `plugin-dir/react/jest-unit.config.js`;
+  - updates to `plugin-dir/react/src/index.js`;
+  - deletion of `plugin-dir/react/config-overrides.js`;
+  - deletion of `plugin-dir/react/scripts/postbuild-stable.js`;
+  - updates to `plugin-dir/lib/Settings.php`;
+  - updates to `plugin-dir/tests/SettingsTest.php`;
+  - updates to `plugin-dir/tests/bootstrap.php`;
+  - updates to `scripts/build-release-zip.sh`;
+  - updates to `scripts/validate-release-zip.sh`;
+  - updates to `plugin-dir/react/README.md`.
+- The React package scripts now use `wp-scripts start`, `wp-scripts build`, and `wp-scripts test-unit-js`.
+- The custom webpack config keeps the VK entry at `src/index.js`, emits stable `static/js/main.js` and `static/css/main.css`, emits `settings-content.html`, and lets WordPress dependency extraction emit `static/js/main.asset.php`.
+- `src/index.js` now renders through `@wordpress/element`, matching the generated dependency metadata.
+- `Settings::admin_enqueue_scripts()` reads `react/build/static/js/main.asset.php`, sanitizes dependencies, appends `wp-i18n`, uses the emitted build version, and falls back to `CF7VK_VERSION` if metadata is absent or malformed.
+- `scripts/build-release-zip.sh` and `scripts/validate-release-zip.sh` now fail closed when `main.asset.php` is missing.
+- `typescript@6.0.3` is pinned as a dev dependency because the current npm resolution for `@wordpress/scripts@34.2.0` can otherwise generate a lockfile that fails `npm ci` against TypeScript peer ranges.
+- Verification evidence:
+  - `node -e "JSON.parse(require('fs').readFileSync('plugin-dir/react/package.json','utf8')); JSON.parse(require('fs').readFileSync('plugin-dir/react/package-lock.json','utf8')); console.log('json ok')"` passed.
+  - `php -l plugin-dir/lib/Settings.php && php -l plugin-dir/tests/bootstrap.php && php -l plugin-dir/tests/SettingsTest.php` passed.
+  - `bash -n scripts/build-release-zip.sh && bash -n scripts/validate-release-zip.sh` passed.
+  - `npm --prefix plugin-dir/react ci` passed.
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed under `wp-scripts`: 10 suites, 48 tests.
+  - `npm --prefix plugin-dir/react run build` passed and emitted `static/js/main.js`, `static/css/main.css`, `static/js/main.asset.php`, `main-rtl.css`, and `settings-content.html`.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 103 tests, 0 failures, 10 PHP 8.1 dependency-heavy skips.
+  - `git diff --check` passed.
+  - `./scripts/build-release-zip.sh` and `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed.
+  - Current candidate ZIP SHA-256 is `1fbe51afca46c245f944e5e32557ed2ef8b1676ed0f21e95c2edb0a0da42a8d9`; size is `218721` bytes.
+  - `unzip -Z1 dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip | rg 'react/build/(settings-content.html|static/js/main.js|static/js/main.asset.php|static/css/main.css|main-rtl.css)'` confirmed required build entries.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T184043Z-61490.oJ7O1n/results/summary.json`, 26 steps, 26 passed, 0 skipped, 0 failures.
+  - `tests/stability/e1-smoke-matrix.sh` passed: summary `/tmp/cf7vk-e1-20260831T184137Z-64259.YWSmg2/results/summary.json`, 166 steps, 166 passed, 0 skipped, 0 failures.
+- Remaining dependency noise after T16 is no longer CRA-specific: `npm ci` still reports peer warnings inside the current `@wordpress/scripts` ESLint stack plus 49 npm audit findings. T17 owns release audit policy and gating.
 
 ## T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate
 
-Status: waiting_dependency
+Status: todo
 
 Goal: make PR and release verification fail closed on source, dependency, artifact, lifecycle, REST, and browser evidence.
 

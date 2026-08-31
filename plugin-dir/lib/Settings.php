@@ -56,6 +56,7 @@ class Settings {
 			return;
 		}
 
+		$asset = self::getReactBuildAsset();
 		$main_css = self::pluginDir() . '/react/build/static/css/main.css';
 		$main_js = self::pluginDir() . '/react/build/static/js/main.js';
 
@@ -63,8 +64,8 @@ class Settings {
 			wp_enqueue_style(
 				'cf7-vk-admin-styles',
 				self::pluginUrl() . '/react/build/static/css/main.css',
-				null,
-				CF7VK_VERSION
+				[],
+				$asset['version']
 			);
 		}
 
@@ -72,8 +73,8 @@ class Settings {
 			wp_enqueue_script(
 				'cf7-vk-admin',
 				self::pluginUrl() . '/react/build/static/js/main.js',
-				[ 'wp-i18n' ],
-				CF7VK_VERSION,
+				$asset['dependencies'],
+				$asset['version'],
 				true
 			);
 			wp_set_script_translations( 'cf7-vk-admin', 'message-bridge-for-contact-form-7-and-vk' );
@@ -121,6 +122,34 @@ class Settings {
 		}
 
 		return '';
+	}
+
+	private static function getReactBuildAsset(): array {
+		$asset_path = self::pluginDir() . '/react/build/static/js/main.asset.php';
+		$asset = file_exists( $asset_path ) ? include $asset_path : [];
+
+		if ( ! is_array( $asset ) ) {
+			$asset = [];
+		}
+
+		$dependencies = $asset['dependencies'] ?? [];
+
+		if ( ! is_array( $dependencies ) ) {
+			$dependencies = [];
+		}
+
+		$dependencies = array_values(
+			array_filter(
+				$dependencies,
+				static fn( $dependency ): bool => is_string( $dependency ) && '' !== $dependency
+			)
+		);
+		$dependencies[] = 'wp-i18n';
+
+		return [
+			'dependencies' => array_values( array_unique( $dependencies ) ),
+			'version'      => isset( $asset['version'] ) && is_string( $asset['version'] ) ? $asset['version'] : CF7VK_VERSION,
+		];
 	}
 
 	private static function getScriptData(): array {

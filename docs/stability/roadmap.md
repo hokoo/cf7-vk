@@ -49,7 +49,8 @@ Implementation progress as of 2026-08-31:
 - `T13. Add React Resource State, Error Boundary, And Retry-Failed UI`: completed.
 - `T14. Harden Admin Mutation Sequencing, State Safety, And Selectors`: completed.
 - `T15. Scope Admin Styles And Notice Policy`: completed.
-- Next execution-ready task: `T16. Migrate React Build To WordPress Scripts`.
+- `T16. Migrate React Build To WordPress Scripts`: completed.
+- Next execution-ready task: `T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate`.
 
 ## Reference Stability Scope
 
@@ -422,6 +423,14 @@ Recommended action:
 - migrate to `@wordpress/scripts`, `webpack.config.js`, and `jest-unit.config.js`;
 - use emitted `main.asset.php` for script dependencies and build versioning;
 - pin CI browser jobs to Node 20 or later as in Telegram.
+
+Status as of 2026-08-31:
+
+- mitigated by T16 for the local React build and test path;
+- `react-scripts`, `config-overrides.js`, and the CRA postbuild copier were removed;
+- `wp-scripts build` now emits stable `main.js`, `main.css`, `main.asset.php`, and `settings-content.html`;
+- `Settings::admin_enqueue_scripts()` reads dependencies/version from `main.asset.php` and appends `wp-i18n`;
+- CI workflow hardening, release audits, Plugin Check, support matrix, and Node pinning remain open for T17.
 
 ### F13. There is no fake VK end-to-end delivery gate
 

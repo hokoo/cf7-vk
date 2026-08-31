@@ -175,6 +175,7 @@ grep -q "class ComposerStaticInit${AUTOLOADER_SUFFIX}" "$PLUGIN_ROOT/vendor/comp
 [ -d "$PLUGIN_ROOT/react/build" ] || fail "React build directory missing: $PLUGIN_SLUG/react/build"
 [ -f "$PLUGIN_ROOT/react/build/settings-content.html" ] || fail "React settings content missing: $PLUGIN_SLUG/react/build/settings-content.html"
 [ -f "$PLUGIN_ROOT/react/build/static/js/main.js" ] || fail "React admin script missing: $PLUGIN_SLUG/react/build/static/js/main.js"
+[ -f "$PLUGIN_ROOT/react/build/static/js/main.asset.php" ] || fail "React admin asset metadata missing: $PLUGIN_SLUG/react/build/static/js/main.asset.php"
 [ -f "$PLUGIN_ROOT/react/build/static/css/main.css" ] || fail "React admin stylesheet missing: $PLUGIN_SLUG/react/build/static/css/main.css"
 [ -f "$README_PATH" ] || fail "WordPress readme missing: $PLUGIN_SLUG/readme.txt"
 

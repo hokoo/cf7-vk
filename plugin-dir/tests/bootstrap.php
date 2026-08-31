@@ -819,6 +819,8 @@ if ( ! function_exists( 'apply_filters' ) ) {
 
 if ( ! function_exists( 'do_action' ) ) {
 	function do_action( string $hook_name, ...$args ): void {
+		$GLOBALS['wp_actions'][ $hook_name ] = ( $GLOBALS['wp_actions'][ $hook_name ] ?? 0 ) + 1;
+
 		if ( empty( $GLOBALS['wp_filter'][ $hook_name ] ) ) {
 			return;
 		}
@@ -831,6 +833,12 @@ if ( ! function_exists( 'do_action' ) ) {
 				call_user_func_array( $callback['function'], $call_args );
 			}
 		}
+	}
+}
+
+if ( ! function_exists( 'did_action' ) ) {
+	function did_action( string $hook_name ): int {
+		return (int) ( $GLOBALS['wp_actions'][ $hook_name ] ?? 0 );
 	}
 }
 
@@ -964,6 +972,47 @@ if ( ! function_exists( 'admin_url' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_enqueue_style' ) ) {
+	function wp_enqueue_style( string $handle, string $src = '', array $deps = [], $ver = false, string $media = 'all' ): void {
+		$GLOBALS['wp_enqueued_styles'][ $handle ] = [
+			'src'    => $src,
+			'deps'   => $deps,
+			'ver'    => $ver,
+			'media'  => $media,
+		];
+	}
+}
+
+if ( ! function_exists( 'wp_enqueue_script' ) ) {
+	function wp_enqueue_script( string $handle, string $src = '', array $deps = [], $ver = false, $args = [] ): void {
+		$GLOBALS['wp_enqueued_scripts'][ $handle ] = [
+			'src'  => $src,
+			'deps' => $deps,
+			'ver'  => $ver,
+			'args' => $args,
+		];
+	}
+}
+
+if ( ! function_exists( 'wp_set_script_translations' ) ) {
+	function wp_set_script_translations( string $handle, string $domain = 'default', string $path = '' ): bool {
+		$GLOBALS['wp_script_translations'][ $handle ] = [
+			'domain' => $domain,
+			'path'   => $path,
+		];
+
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_localize_script' ) ) {
+	function wp_localize_script( string $handle, string $object_name, array $l10n ): bool {
+		$GLOBALS['wp_localized_scripts'][ $handle ][ $object_name ] = $l10n;
+
+		return true;
+	}
+}
+
 if ( ! function_exists( 'wp_safe_redirect' ) ) {
 	function wp_safe_redirect( string $location, int $status = 302, string $x_redirect_by = 'WordPress' ): bool {
 		$GLOBALS['wp_safe_redirect_location'] = $location;
@@ -1020,6 +1069,21 @@ if ( ! function_exists( 'rest_ensure_response' ) ) {
 if ( ! function_exists( 'rest_url' ) ) {
 	function rest_url( string $path = '' ): string {
 		return 'https://example.test/wp-json/' . ltrim( $path, '/' );
+	}
+}
+
+if ( ! function_exists( 'get_rest_url' ) ) {
+	function get_rest_url( $blog_id = null, string $path = '', string $scheme = 'rest' ): string {
+		return rest_url( $path );
+	}
+}
+
+if ( ! function_exists( 'plugins_url' ) ) {
+	function plugins_url( string $path = '', string $plugin = '' ): string {
+		$plugin_file = '' !== $plugin ? $plugin : CF7VK_FILE;
+		$plugin_slug = basename( dirname( $plugin_file ) );
+
+		return 'https://example.test/wp-content/plugins/' . $plugin_slug . '/' . ltrim( $path, '/' );
 	}
 }
 
@@ -1550,6 +1614,7 @@ spl_autoload_register(
 
 function cf7vk_test_reset_environment(): void {
 	$GLOBALS['wp_filter'] = [];
+	$GLOBALS['wp_actions'] = [];
 	$GLOBALS['wp_options'] = [];
 	$GLOBALS['wp_posts'] = [];
 	$GLOBALS['wp_posts_by_type'] = [];
@@ -1561,6 +1626,10 @@ function cf7vk_test_reset_environment(): void {
 	$GLOBALS['wp_log_rows'] = [];
 	$GLOBALS['wp_rest_routes'] = [];
 	$GLOBALS['wp_rest_fields'] = [];
+	$GLOBALS['wp_enqueued_styles'] = [];
+	$GLOBALS['wp_enqueued_scripts'] = [];
+	$GLOBALS['wp_script_translations'] = [];
+	$GLOBALS['wp_localized_scripts'] = [];
 	$GLOBALS['wp_remote_post_requests'] = [];
 	$GLOBALS['wp_remote_get_requests'] = [];
 	$GLOBALS['wpdb_inserts'] = [];
