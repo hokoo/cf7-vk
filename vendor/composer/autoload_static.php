@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit8026bb9be94e5af8b081fd166c874365
+class ComposerStaticInitCf7Vk
 {
     public static $prefixLengthsPsr4 = array (
         'i' =>
@@ -115,10 +115,16 @@ class ComposerStaticInit8026bb9be94e5af8b081fd166c874365
         'iTRON\\cf7Vk\\Exceptions\\TransportNotConfigured' => __DIR__ . '/../..' . '/lib/Exceptions/TransportNotConfigured.php',
         'iTRON\\cf7Vk\\Exceptions\\VkApiException' => __DIR__ . '/../..' . '/lib/Exceptions/VkApiException.php',
         'iTRON\\cf7Vk\\Form' => __DIR__ . '/../..' . '/lib/Form.php',
+        'iTRON\\cf7Vk\\LogRedactor' => __DIR__ . '/../..' . '/lib/LogRedactor.php',
         'iTRON\\cf7Vk\\Logger' => __DIR__ . '/../..' . '/lib/Logger.php',
+        'iTRON\\cf7Vk\\Maintenance' => __DIR__ . '/../..' . '/lib/Maintenance.php',
         'iTRON\\cf7Vk\\Settings' => __DIR__ . '/../..' . '/lib/Settings.php',
         'iTRON\\cf7Vk\\Util' => __DIR__ . '/../..' . '/lib/Util.php',
         'iTRON\\cf7Vk\\VkApi' => __DIR__ . '/../..' . '/lib/VkApi.php',
+        'iTRON\\cf7Vk\\Vk\\VkDeliveryResult' => __DIR__ . '/../..' . '/lib/Vk/VkDeliveryResult.php',
+        'iTRON\\cf7Vk\\Vk\\VkGateway' => __DIR__ . '/../..' . '/lib/Vk/VkGateway.php',
+        'iTRON\\cf7Vk\\Vk\\VkRedactor' => __DIR__ . '/../..' . '/lib/Vk/VkRedactor.php',
+        'iTRON\\cf7Vk\\Vk\\WordPressVkGateway' => __DIR__ . '/../..' . '/lib/Vk/WordPressVkGateway.php',
         'iTRON\\wpConnections\\Abstracts\\ArrayConvertableCollectionTrait' => __DIR__ . '/..' . '/hokoo/wpconnections/src/Abstracts/ArrayConvertableCollectionTrait.php',
         'iTRON\\wpConnections\\Abstracts\\Connection' => __DIR__ . '/..' . '/hokoo/wpconnections/src/Abstracts/Connection.php',
         'iTRON\\wpConnections\\Abstracts\\IArrayConvertable' => __DIR__ . '/..' . '/hokoo/wpconnections/src/Abstracts/IArrayConvertable.php',
@@ -167,9 +173,9 @@ class ComposerStaticInit8026bb9be94e5af8b081fd166c874365
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit8026bb9be94e5af8b081fd166c874365::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit8026bb9be94e5af8b081fd166c874365::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit8026bb9be94e5af8b081fd166c874365::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitCf7Vk::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitCf7Vk::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInitCf7Vk::$classMap;
 
         }, null, ClassLoader::class);
     }
