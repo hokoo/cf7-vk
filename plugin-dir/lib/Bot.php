@@ -584,18 +584,31 @@ class Bot extends Entity implements wpPostAble {
 			'hasNewConnections' => false,
 			'failed' => 0,
 			'locked' => true,
+			'cleanupLocked' => false,
 			'ts' => $this->getLongPollTs(),
 			'updatesCount' => 0,
+			'errorCount' => 0,
+			'processingErrors' => [],
+			'transientError' => false,
+			'error' => null,
+			'cursorAdvanced' => false,
 		];
+
+		if ( Maintenance::hasCleanupLock() ) {
+			return array_merge( $empty_result, [ 'cleanupLocked' => true ] );
+		}
 
 		if ( ! $this->acquireFetchUpdatesLock() ) {
 			return $empty_result;
 		}
 
 		try {
-			$this->ensureLongPollBootstrap();
+			if ( Maintenance::hasCleanupLock() ) {
+				return array_merge( $empty_result, [ 'cleanupLocked' => true ] );
+			}
 
 			try {
+				$this->ensureLongPollBootstrap();
 				$response = $this->getApi()->checkLongPoll(
 					$this->getLongPollServer(),
 					$this->getLongPollKey(),
@@ -612,7 +625,7 @@ class Bot extends Entity implements wpPostAble {
 					]
 				);
 
-				throw $e;
+				return $this->transportFailureResult( $empty_result, $e );
 			}
 
 			$failed = (int) ( $response['failed'] ?? 0 );
@@ -636,12 +649,33 @@ class Bot extends Entity implements wpPostAble {
 					'hasNewConnections' => false,
 					'failed' => 1,
 					'locked' => false,
+					'cleanupLocked' => false,
 					'ts' => $new_ts,
+					'updatesCount' => 0,
+					'errorCount' => 0,
+					'processingErrors' => [],
+					'transientError' => false,
+					'error' => null,
+					'cursorAdvanced' => '' !== $new_ts,
 				];
 			}
 
 			if ( 2 === $failed || 3 === $failed ) {
-				$this->refreshLongPollBootstrap();
+				try {
+					$this->refreshLongPollBootstrap();
+				} catch ( VkApiException $e ) {
+					$this->markTransportFailure(
+						$e,
+						'VK Long Poll bootstrap refresh failed.',
+						Logger::LEVEL_WARNING,
+						[
+							'groupId' => $this->getGroupId(),
+							'failed' => $failed,
+						]
+					);
+
+					return $this->transportFailureResult( $empty_result, $e, $failed );
+				}
 
 				return [
 					'updates' => [],
@@ -649,29 +683,51 @@ class Bot extends Entity implements wpPostAble {
 					'hasNewConnections' => false,
 					'failed' => $failed,
 					'locked' => false,
+					'cleanupLocked' => false,
 					'ts' => $this->getLongPollTs(),
+					'updatesCount' => 0,
+					'errorCount' => 0,
+					'processingErrors' => [],
+					'transientError' => false,
+					'error' => null,
+					'cursorAdvanced' => true,
 				];
 			}
 
 			$updates = is_array( $response['updates'] ?? null ) ? $response['updates'] : [];
 			$new_ts = (string) ( $response['ts'] ?? $this->getLongPollTs() );
 			$processed = $this->processLongPollUpdates( $updates );
+			$error_count = (int) ( $processed['errorCount'] ?? 0 );
+			$cursor_advanced = 0 === $error_count;
 
-			$this->persistStateSafely(
-				[
-					'longPollTs' => $new_ts,
-					'lastSyncAt' => gmdate( 'c' ),
-					'lastStatus' => self::STATUS_ONLINE,
-				]
-			);
+			if ( $cursor_advanced ) {
+				$this->persistStateSafely(
+					[
+						'longPollTs' => $new_ts,
+						'lastSyncAt' => gmdate( 'c' ),
+						'lastStatus' => self::STATUS_ONLINE,
+					]
+				);
+			} else {
+				$this->persistStateSafely(
+					[
+						'lastStatus' => self::STATUS_ONLINE,
+					]
+				);
+			}
 
 			return array_merge(
 				$processed,
 				[
 					'failed' => 0,
 					'locked' => false,
-					'ts' => $new_ts,
+					'cleanupLocked' => false,
+					'ts' => $cursor_advanced ? $new_ts : $this->getLongPollTs(),
+					'nextTs' => $new_ts,
 					'updatesCount' => count( $updates ),
+					'transientError' => false,
+					'error' => null,
+					'cursorAdvanced' => $cursor_advanced,
 				]
 			);
 		} finally {
@@ -854,6 +910,23 @@ class Bot extends Entity implements wpPostAble {
 		);
 	}
 
+	private function transportFailureResult( array $empty_result, VkApiException $exception, int $failed = 0 ): array {
+		return array_merge(
+			$empty_result,
+			[
+				'failed' => $failed,
+				'locked' => false,
+				'cleanupLocked' => false,
+				'transientError' => true,
+				'error' => [
+					'type' => 0 !== (int) $exception->getCode() ? 'vk_api' : 'transport',
+					'code' => (int) $exception->getCode(),
+					'message' => LogRedactor::redactString( $exception->getMessage() ),
+				],
+			]
+		);
+	}
+
 	/**
 	 * @throws TransportNotConfigured
 	 * @throws VkApiException
@@ -922,7 +995,11 @@ class Bot extends Entity implements wpPostAble {
 			'updates' => [],
 			'hasNewChats' => false,
 			'hasNewConnections' => false,
+			'errorCount' => 0,
+			'processingErrors' => [],
+			'duplicatePeerIds' => 0,
 		];
+		$processed_peer_ids = [];
 
 		foreach ( $updates as $update ) {
 			if ( ! is_array( $update ) ) {
@@ -930,6 +1007,12 @@ class Bot extends Entity implements wpPostAble {
 			}
 
 			if ( 'message_new' !== ( $update['type'] ?? '' ) ) {
+				continue;
+			}
+
+			$peer_id = $this->extractUpdatePeerId( $update );
+			if ( '' !== $peer_id && isset( $processed_peer_ids[ $peer_id ] ) ) {
+				$result['duplicatePeerIds']++;
 				continue;
 			}
 
@@ -955,12 +1038,23 @@ class Bot extends Entity implements wpPostAble {
 					'VK Long Poll update processing failed.',
 					Logger::LEVEL_WARNING
 				);
+				$result['errorCount']++;
+				$result['processingErrors'][] = [
+					'eventId' => (string) ( $update['event_id'] ?? '' ),
+					'messageId' => (string) ( $message['id'] ?? '' ),
+					'type' => get_class( $e ),
+					'message' => LogRedactor::redactString( $e->getMessage() ),
+				];
 
 				continue;
 			}
 
 			if ( empty( $processed ) ) {
 				continue;
+			}
+
+			if ( '' !== $peer_id ) {
+				$processed_peer_ids[ $peer_id ] = true;
 			}
 
 			$result['updates'][] = $processed;
@@ -993,8 +1087,8 @@ class Bot extends Entity implements wpPostAble {
 
 		$peer_id = (string) ( $message['peer_id'] ?? '' );
 		$user_id = (int) ( $message['from_id'] ?? 0 );
-		$profile = $this->fetchUserProfile( $user_id );
-		$conversation = $this->fetchConversationData( $message );
+		$profile = $this->fetchOptionalUserProfile( $user_id, $message );
+		$conversation = $this->fetchOptionalConversationData( $message );
 		$existing_chat = '' !== $peer_id ? Util::getChatByPeerId( $peer_id ) : null;
 		$chat = Util::createOrUpdateChatFromVkMessage( $message, $profile, $conversation );
 		$has_new_chat = null === $existing_chat;
@@ -1044,5 +1138,48 @@ class Bot extends Entity implements wpPostAble {
 		}
 
 		return $this->getApi()->getConversationByMessage( $peer_id, $conversation_message_id );
+	}
+
+	private function fetchOptionalUserProfile( int $user_id, array $message ): array {
+		try {
+			return $this->fetchUserProfile( $user_id );
+		} catch ( VkApiException $e ) {
+			$this->logOptionalLookupFailure( 'profile_lookup', $message, $e );
+			return [];
+		}
+	}
+
+	private function fetchOptionalConversationData( array $message ): array {
+		try {
+			return $this->fetchConversationData( $message );
+		} catch ( VkApiException $e ) {
+			$this->logOptionalLookupFailure( 'conversation_lookup', $message, $e );
+			return [];
+		}
+	}
+
+	private function logOptionalLookupFailure( string $stage, array $message, VkApiException $exception ): void {
+		$this->logger->write(
+			[
+				'botTitle' => $this->getTitle(),
+				'wpPostID' => $this->getPost()->ID,
+				'groupId' => $this->getGroupId(),
+				'stage' => $stage,
+				'userId' => (string) ( $message['from_id'] ?? '' ),
+				'peerId' => (string) ( $message['peer_id'] ?? '' ),
+				'conversationMessageId' => (string) ( $message['conversation_message_id'] ?? '' ),
+				'error' => $exception->getMessage(),
+			],
+			'VK Long Poll optional lookup failed.',
+			Logger::LEVEL_WARNING
+		);
+	}
+
+	private function extractUpdatePeerId( array $update ): string {
+		$message = isset( $update['object']['message'] ) && is_array( $update['object']['message'] )
+			? $update['object']['message']
+			: [];
+
+		return trim( (string) ( $message['peer_id'] ?? '' ) );
 	}
 }

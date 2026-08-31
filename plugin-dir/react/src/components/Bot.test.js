@@ -138,3 +138,32 @@ test('successful credential save uses persisted response and refreshes reset rel
     expect(refreshBotChannelConnections).toHaveBeenCalledTimes(1);
     expect(refreshBots).toHaveBeenCalledTimes(1);
 });
+
+test('polling displays structured transient fetch errors', async () => {
+    apiPingBot.mockResolvedValue({longPollReady: true});
+    apiFetchUpdates.mockResolvedValue({
+        locked: false,
+        transientError: true,
+        error: {
+            message: 'VK timeout'
+        }
+    });
+    const refreshBots = jest.fn().mockResolvedValue(undefined);
+    renderBot(
+        {
+            groupId: '1001',
+            accessToken: 'old-token',
+            isAccessTokenEmpty: false,
+            lastStatus: 'online'
+        },
+        {refreshBots}
+    );
+
+    await act(async () => {
+        await Promise.resolve();
+    });
+    await flushTimersAndPromises();
+
+    expect(await screen.findByText('VK timeout')).toBeInTheDocument();
+    expect(refreshBots).toHaveBeenCalled();
+});

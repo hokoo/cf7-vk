@@ -723,6 +723,7 @@ run_fresh_case() {
 		&& run_logged "${case_id}" "candidate_install" wp_run plugin install "/artifacts/${PLUGIN_SLUG}-candidate.zip" --force --activate \
 		&& write_state "${case_id}" "after-activate"; then
 		assert_active_version "${case_id}" "after-activate" "${version}" || true
+		run_logged_json "${case_id}" "fake_vk_fetch_updates_rest" wp_run eval-file /e1-tests/wp-fake-vk-fetch-updates.php || rc=1
 		run_logged "${case_id}" "deactivate" wp_run plugin deactivate "${PLUGIN_SLUG}" || rc=1
 		write_state "${case_id}" "after-deactivate" || rc=1
 		run_logged "${case_id}" "reactivate" wp_run plugin activate "${PLUGIN_SLUG}" || rc=1

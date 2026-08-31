@@ -230,6 +230,7 @@ const Bot = ({
 
             try {
                 const result = await apiFetchUpdates(bot.id);
+                const hasTransientError = Boolean(result?.transientError);
                 const hasLinkedDialogChanges = Boolean(result?.hasNewChats || result?.hasNewConnections);
                 const shouldRefreshBotState = Boolean(result?.failed);
                 const wasSkippedByLock = Boolean(result?.locked);
@@ -239,6 +240,16 @@ const Bot = ({
                 }
 
                 if (wasSkippedByLock) {
+                    scheduleNextPoll(RETRY_DELAY_MS);
+                    return;
+                }
+
+                if (hasTransientError) {
+                    setFeedback({
+                        type: 'error',
+                        message: result?.error?.message || wp.i18n.__( 'VK updates could not be checked.', 'message-bridge-for-contact-form-7-and-vk' )
+                    });
+                    await refreshBotsRef.current();
                     scheduleNextPoll(RETRY_DELAY_MS);
                     return;
                 }

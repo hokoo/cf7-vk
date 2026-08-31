@@ -33,6 +33,9 @@ Execution status as of 2026-08-31:
 - `T7`: completed; VK API and Long Poll HTTP calls are isolated behind a gateway contract, normalized delivery result, VK-aware redactor, and recording fake test harness.
 - `T8`: completed; `Logger::write()` centrally redacts sensitive keys, VK tokens, Long Poll keys, emails, phones, and custom filter patterns before hook dispatch and database storage.
 - `T9`: completed; credential updates now validate candidate group/token/API version through the VK gateway before persistence and reset bot-owned relations only after validated community identity changes.
+- `T10`: completed; Long Poll fetch now coordinates with maintenance/fetch locks, returns structured transient errors, preserves `failed=1/2/3` semantics, and does not advance `longPollTs` after non-ignorable per-update processing failures.
+- `T11`: todo; unblocked by completed `T7` and `T8`.
+- `T12`: todo; unblocked by completed `S0` and installable React dependencies.
 
 Completed first execution batch after approval:
 
@@ -41,7 +44,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T10. Harden VK Long Poll Cursor, Locks, And Update Processing`
+- `T11. Normalize CF7 Delivery Results And Per-Recipient Failure Handling`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -801,7 +804,7 @@ Notes/Risks:
 
 ## T10. Harden VK Long Poll Cursor, Locks, And Update Processing
 
-Status: todo
+Status: completed
 
 Goal: make VK dialog discovery deterministic and safe under transport, malformed payload, per-update, and concurrency failures.
 
@@ -856,11 +859,21 @@ Dependencies:
 
 Notes/Risks:
 
-- If the owner prefers "continue and advance cursor" for some update-processing failures, record that as accepted data-loss semantics before implementation.
+- Implemented cursor policy is fail-closed for non-ignorable update-processing failures: the bot keeps the previous `longPollTs` and returns `nextTs` separately.
+- Optional profile/conversation lookups are classified as safely ignorable; they are logged through the central redactor and do not block cursor advancement.
+- Verification evidence:
+  - `php -l` passed for `plugin-dir/lib/Bot.php`, `plugin-dir/tests/BotLongPollTest.php`, and `tests/stability/wp-fake-vk-fetch-updates.php`.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 92 tests, 0 failures, 3 PHP 8.1 dependency-heavy skips.
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 3 suites, 7 tests.
+  - `git diff --check` passed.
+  - `./scripts/build-release-zip.sh` and `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed.
+  - Current candidate ZIP SHA-256 is `8dcfdd91cdb5f545aea6c7535f0dea38eed00bbe356c474d677fa3d41ddc90f4`; size is `257824` bytes.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T165303Z-58286.V0rQBE/results/summary.json`, 26 steps, 26 passed, 0 skipped, 0 failures; the real WordPress REST fake-VK step returned 200, processed 1 update, advanced the cursor, created 1 chat, and created 1 bot-chat connection.
+  - `tests/stability/e1-smoke-matrix.sh` passed: summary `/tmp/cf7vk-e1-20260831T165458Z-59950.Hw1VIC/results/summary.json`, 166 steps, 166 passed, 0 skipped, 0 failures.
 
 ## T11. Normalize CF7 Delivery Results And Per-Recipient Failure Handling
 
-Status: waiting_dependency
+Status: todo
 
 Goal: make CF7-to-VK delivery observable, resilient across recipients, and independent from CF7 form success.
 
@@ -913,7 +926,7 @@ Notes/Risks:
 
 ## T12. Harden REST API And React API Client
 
-Status: waiting_dependency
+Status: todo
 
 Goal: make admin REST traffic paginated, explicit, sanitized, and robust across WordPress permalink modes.
 

@@ -43,7 +43,8 @@ Implementation progress as of 2026-08-31:
 - `T7. Introduce VK Gateway Contract And Recording Fake`: completed.
 - `T8. Add Central Redaction For Logs, Transport Errors, And Evidence`: completed.
 - `T9. Add Transactional VK Credential Update Contract`: completed.
-- Next execution-ready task: `T10. Harden VK Long Poll Cursor, Locks, And Update Processing`.
+- `T10. Harden VK Long Poll Cursor, Locks, And Update Processing`: completed.
+- Next execution-ready task: `T11. Normalize CF7 Delivery Results And Per-Recipient Failure Handling`.
 
 ## Reference Stability Scope
 
@@ -308,6 +309,16 @@ Recommended action:
 - either fail closed without advancing `ts` on process errors or record explicit skipped-update evidence with accepted loss semantics;
 - coordinate fetch locks with cleanup locks;
 - redact Long Poll URLs and keys in every error path.
+
+Status as of 2026-08-31:
+
+- mitigated by T10;
+- `fetchUpdates()` now coordinates with maintenance cleanup and stale fetch locks;
+- transient VK Long Poll failures return structured retryable data for the admin UI instead of only generic thrown errors;
+- `failed=1/2/3` Long Poll responses preserve VK semantics while exposing cursor state explicitly;
+- non-ignorable per-update processing failures keep the previous `longPollTs` and expose `nextTs` without silently dropping the failed update;
+- optional profile/conversation lookup failures are logged as safely ignorable and redacted;
+- a real WordPress REST smoke gate triggers `/wp/v2/cf7vk_bot/{id}/fetch_updates` through fake VK responses and asserts cursor, chat, relation, and redaction evidence.
 
 ### F9. REST and admin bootstrap do not tolerate partial failures
 
