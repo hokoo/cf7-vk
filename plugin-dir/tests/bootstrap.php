@@ -19,7 +19,7 @@ if ( ! defined( 'CF7VK_PLUGIN_NAME' ) ) {
 }
 
 if ( ! defined( 'CF7VK_VERSION' ) ) {
-	define( 'CF7VK_VERSION', '0.1.4' );
+	define( 'CF7VK_VERSION', '1.0.0' );
 }
 
 if ( ! defined( 'CF7VK_FILE' ) ) {

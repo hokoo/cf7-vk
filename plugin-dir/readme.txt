@@ -4,7 +4,7 @@ Tags: contact form 7,vk,vkontakte
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.1.4
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,15 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 
 == Changelog ==
 
+= 1.0.0 =
+* Added stability hardening for plugin lifecycle, activation, deactivation, uninstall cleanup, relation repair, log retention, and migration recovery.
+* Added a VK gateway contract with fake transport coverage, sanitized diagnostics, transactional credential validation, safer Long Poll cursor handling, and per-recipient delivery results.
+* Improved Contact Form 7 delivery continuity so one failed VK recipient does not stop later eligible recipients.
+* Hardened the React admin interface with typed REST errors, paginated resource loading, retry-only failed resources, safer mutation sequencing, error boundaries, and page-scoped styles.
+* Migrated the admin asset build to WordPress Scripts with generated asset metadata for dependency and cache-busting accuracy.
+* Added release verification gates for deterministic ZIP builds, dependency audits, Plugin Check, WordPress lifecycle/support matrix, real REST/admin smoke, authenticated browser smoke, and fake VK form delivery E2E.
+* Updated the release workflow so GitHub release publication verifies the ZIP first; prereleases update <code>plugin-dist</code>, while stable releases deploy the verified build to WordPress.org and then update <code>stable</code>.
+
 = 0.1.4 =
 * Added PHP constant support and admin copy helpers for VK access tokens and group IDs.
 * Expanded VK community setup documentation and corrected the documented delivery hooks.
@@ -112,3 +121,6 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 * Delivery is restricted to active dialogs, and the admin UI now exposes copyable auth commands and channel title editing.
 
 == Upgrade Notice ==
+
+= 1.0.0 =
+Major stability hardening release with safer migrations, redacted diagnostics, resilient VK delivery, admin UI error handling, and verified release gates.

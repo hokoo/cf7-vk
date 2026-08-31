@@ -59,7 +59,17 @@ Completed first execution batch after approval:
 Current delivery state:
 
 - Stability hardening is implementation-complete through `T20` and independently QA-reviewed through `QA6`.
+- Release metadata is prepared for `1.0.0`; `0.1.4` remains the last published baseline in lifecycle upgrade evidence.
 - Merge/release readiness now depends on GitHub CI for the PR branch and configured repository credentials for the release-created WordPress.org deploy.
+
+Release prep evidence for `1.0.0`:
+
+- Plugin header, `CF7VK_VERSION`, WordPress.org readme stable tag, React private package metadata, test bootstrap, and stability candidate expected version were updated to `1.0.0`.
+- `plugin-dir/readme.txt` includes the `1.0.0` changelog and upgrade notice.
+- `EXPECTED_VERSION=1.0.0 ./scripts/build-release-zip.sh` passed and validated the release ZIP.
+- `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 1.0.0` passed.
+- `tests/stability/e5-release-zip-hygiene-negative.sh` passed: 17 forbidden release ZIP entries rejected.
+- `tests/stability/e1-smoke-matrix.sh --artifact-only` passed: summary `/tmp/cf7vk-e1-20260831T210139Z-84297.Y1tJHH/results/summary.json`, 10 passed steps, 0 failed, candidate version `1.0.0`, SHA-256 `d57f0a7f6059a04aa30fe3e669c36bee1d5c007a0c0b49e7f272265865e5643c`, size `219447`.
 
 ## S0. Approve VK Stability Contract And First Batch
 

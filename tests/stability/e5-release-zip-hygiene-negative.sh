@@ -100,7 +100,7 @@ if [ -z "$ENTRYPOINT" ]; then
 fi
 
 if [ -z "$EXPECTED_VERSION" ]; then
-	EXPECTED_VERSION="$(jq -r '.candidate.expected_version // .support_contract.candidate_expected_version // "0.1.4"' "$SOURCE_MANIFEST")"
+	EXPECTED_VERSION="$(jq -r '.candidate.expected_version // .support_contract.candidate_expected_version // "1.0.0"' "$SOURCE_MANIFEST")"
 fi
 
 BASE_DIR="$WORKDIR/base"

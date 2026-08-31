@@ -30,14 +30,14 @@
     ],
     "override_env": "CF7VK_CANDIDATE_ZIP",
     "expected_version_env": "CF7VK_EXPECTED_CANDIDATE_VERSION",
-    "expected_version": "0.1.4",
+    "expected_version": "1.0.0",
     "header_path_in_zip": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php",
     "plugin_basename": "message-bridge-for-contact-form-7-and-vk/cf7-vk.php"
   },
   "support_contract": {
     "requires_wordpress": "6.0",
     "requires_php": ">=8.1",
-    "candidate_expected_version": "0.1.4",
+    "candidate_expected_version": "1.0.0",
     "lifecycle_cases": [
       "fresh",
       "upgrade-v-0.1.0",

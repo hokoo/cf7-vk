@@ -3,7 +3,7 @@
  * Runs migration characterization checks in an ephemeral WordPress site.
  *
  * Intended to be executed with WP-CLI:
- * wp eval-file /e1-tests/wp-characterize-migration.php 0.1.4 0.1.4
+ * wp eval-file /e1-tests/wp-characterize-migration.php 0.1.4 1.0.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,7 +20,7 @@ if ( '' === $source_version ) {
 }
 
 if ( '' === $target_version ) {
-	$target_version = defined( 'CF7VK_VERSION' ) ? CF7VK_VERSION : '0.1.4';
+	$target_version = defined( 'CF7VK_VERSION' ) ? CF7VK_VERSION : '1.0.0';
 }
 
 function cf7vk_e2_public_migration_state(): array {
