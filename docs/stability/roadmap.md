@@ -46,7 +46,8 @@ Implementation progress as of 2026-08-31:
 - `T10. Harden VK Long Poll Cursor, Locks, And Update Processing`: completed.
 - `T11. Normalize CF7 Delivery Results And Per-Recipient Failure Handling`: completed.
 - `T12. Harden REST API And React API Client`: completed.
-- Next execution-ready task: `T13. Add React Resource State, Error Boundary, And Retry-Failed UI`.
+- `T13. Add React Resource State, Error Boundary, And Retry-Failed UI`: completed.
+- Next execution-ready task: `T14. Harden Admin Mutation Sequencing, State Safety, And Selectors`.
 
 ## Reference Stability Scope
 
@@ -346,10 +347,11 @@ Recommended action:
 
 Status as of 2026-08-31:
 
-- partially mitigated by T12 for the API-client layer;
+- mitigated by T12 and T13 for the React API-client and admin bootstrap layers;
 - `ApiError` now provides sanitized method, route, status, code, category, and data diagnostics;
 - invalid JSON, permission failures, transport failures, sensitive URL redaction, and later-page collection failures are covered by React unit tests;
-- the all-or-nothing app bootstrap, per-resource rendering, error boundary, and retry-failed UI remain open for T13.
+- `App` now uses independent resource state and `Promise.allSettled`, keeps loaded sections visible across unrelated failures, shows targeted resource errors, retries only failed resources, disables dependency-gated controls, and wraps the settings screen in `SettingsErrorBoundary`;
+- broader mutation sequencing, selector hardening, and browser smoke remain open for T14/T18.
 
 ### F10. CF7 forms are not paginated in the admin API client
 

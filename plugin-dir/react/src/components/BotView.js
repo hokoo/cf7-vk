@@ -15,6 +15,7 @@ const BotView = ({
     statusClass,
     chatsForBot = [],
     bot2ChatConnections = [],
+    chatDataStatus = 'ready',
     updateField,
     remove,
     handleFieldBlur,
@@ -174,7 +175,15 @@ const BotView = ({
                 <div className="frame chats-for-bot">
                     <h5>{wp.i18n.__( 'Linked dialogs', 'message-bridge-for-contact-form-7-and-vk' )}</h5>
 
-                    {chatsForBot.length > 0 ? (
+                    {'error' === chatDataStatus ? (
+                        <span className="resource-error">
+                            {wp.i18n.__( 'VK dialogs could not be loaded.', 'message-bridge-for-contact-form-7-and-vk' )}
+                        </span>
+                    ) : 'ready' !== chatDataStatus ? (
+                        <span className="resource-loading">
+                            {wp.i18n.__( 'Loading VK dialogs...', 'message-bridge-for-contact-form-7-and-vk' )}
+                        </span>
+                    ) : chatsForBot.length > 0 ? (
                         <ul>
                             {chatsForBot.map((chat) => {
                                 const status = getChatStatus(bot.id, chat.id, bot2ChatConnections);

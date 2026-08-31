@@ -84,6 +84,7 @@ const Bot = ({
     bot,
     chats = [],
     bot2ChatConnections = [],
+    chatDataStatus = 'ready',
     onBotSaved,
     onBotRemoved,
     refreshBots,
@@ -591,6 +592,7 @@ const Bot = ({
             statusClass={statusClass}
             chatsForBot={chatsForBot}
             bot2ChatConnections={bot2ChatConnections}
+            chatDataStatus={chatDataStatus}
             updateField={updateField}
             remove={remove}
             handleFieldBlur={scheduleImmediateSave}

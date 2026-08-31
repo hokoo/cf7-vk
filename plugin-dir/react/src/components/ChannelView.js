@@ -25,7 +25,8 @@ const ChannelView = ({
     handleToggleChat,
     deleteChannel,
     getToggleButtonLabel,
-    renderChannelClasses
+    renderChannelClasses,
+    dataAvailability = {forms: 'ready', bots: 'ready', chats: 'ready'}
 }) => {
     return (
         <div className={`entity-container channel${renderChannelClasses()}${saving ? ' saving' : ''}`} id={`channel-${channel.id}`}>
@@ -46,13 +47,22 @@ const ChannelView = ({
                         </div>
 
                         <div className="column bot-column">
-                            {botForChannel ? (
+                            {'error' === dataAvailability.bots ? (
+                                <span className="resource-error">
+                                    {wp.i18n.__( 'VK bots are unavailable.', 'message-bridge-for-contact-form-7-and-vk' )}
+                                </span>
+                            ) : 'ready' !== dataAvailability.bots ? (
+                                <span className="resource-loading">
+                                    {wp.i18n.__( 'Loading VK bots...', 'message-bridge-for-contact-form-7-and-vk' )}
+                                </span>
+                            ) : botForChannel ? (
                                 <div className={`bot-for-channel ${botForChannel.statusClass}`}>
                                     <span>{botForChannel.title}</span>
                                     <button
                                         className="detach-button detach-bot-button crux"
                                         type="button"
                                         onClick={handleRemoveBot}
+                                        disabled={saving}
                                     />
                                 </div>
                             ) : (
@@ -69,6 +79,7 @@ const ChannelView = ({
                                             placeholder={wp.i18n.__( 'Pick a VK bot', 'message-bridge-for-contact-form-7-and-vk' )}
                                             onChange={handleBotSelect}
                                             isClearable
+                                            isDisabled={saving}
                                         />
                                     ) : (
                                         <span className="no-bots-found">
@@ -82,13 +93,22 @@ const ChannelView = ({
                 </div>
 
                 <div className="frame chats">
-                    {renderedChats.length > 0 ? (
+                    {'error' === dataAvailability.chats ? (
+                        <span className="resource-error">
+                            {wp.i18n.__( 'VK dialog data is unavailable.', 'message-bridge-for-contact-form-7-and-vk' )}
+                        </span>
+                    ) : 'ready' !== dataAvailability.chats ? (
+                        <span className="resource-loading">
+                            {wp.i18n.__( 'Loading VK dialog data...', 'message-bridge-for-contact-form-7-and-vk' )}
+                        </span>
+                    ) : renderedChats.length > 0 ? (
                         <>
                             {renderedChats.map((chat) => (
                                 <div
                                     key={chat.id}
                                     className={`chat chat-${chat.id} ${chat.status.toLowerCase()}`}
-                                    onClick={() => handleToggleChat(chat.id, chat.status)}
+                                    onClick={() => !saving && handleToggleChat(chat.id, chat.status)}
+                                    aria-disabled={saving}
                                     title={getToggleButtonLabel(chat.status)}
                                 >
                                     <span className="chat-username">{chat.title}</span>
@@ -101,13 +121,26 @@ const ChannelView = ({
                 </div>
 
                 <div className="frame forms">
-                    <button className="add-button add-form-button" type="button" onClick={handleAddForm}>
+                    <button
+                        className="add-button add-form-button"
+                        type="button"
+                        onClick={handleAddForm}
+                        disabled={'ready' !== dataAvailability.forms || saving}
+                    >
                         {!showFormSelector
                             ? wp.i18n.__( 'Add Form', 'message-bridge-for-contact-form-7-and-vk' )
                             : wp.i18n.__( 'Cancel', 'message-bridge-for-contact-form-7-and-vk' )}
                     </button>
 
-                    {showFormSelector ? (
+                    {'error' === dataAvailability.forms ? (
+                        <span className="resource-error">
+                            {wp.i18n.__( 'Forms are unavailable.', 'message-bridge-for-contact-form-7-and-vk' )}
+                        </span>
+                    ) : 'ready' !== dataAvailability.forms ? (
+                        <span className="resource-loading">
+                            {wp.i18n.__( 'Loading forms...', 'message-bridge-for-contact-form-7-and-vk' )}
+                        </span>
+                    ) : showFormSelector ? (
                         <Select
                             className="select-picker form-picker"
                             classNamePrefix="select-picker"
@@ -119,10 +152,11 @@ const ChannelView = ({
                             placeholder={wp.i18n.__( 'Pick a form', 'message-bridge-for-contact-form-7-and-vk' )}
                             onChange={handleFormSelect}
                             isClearable
+                            isDisabled={saving}
                         />
                     ) : null}
 
-                    {formsForChannel.length > 0 ? (
+                    {'ready' === dataAvailability.forms && (formsForChannel.length > 0 ? (
                         <ul className={`form-list ${showFormSelector ? 'show-selector' : ''}`}>
                             {formsForChannel.map((form) => (
                                 <li key={form.id}>
@@ -131,13 +165,14 @@ const ChannelView = ({
                                         className="detach-button crux detach-form-button"
                                         type="button"
                                         onClick={() => handleRemoveForm(form.id)}
+                                        disabled={saving}
                                     />
                                 </li>
                             ))}
                         </ul>
                     ) : !showFormSelector ? (
                         <span className="no-forms-found">[{wp.i18n.__( 'No forms assigned to this channel', 'message-bridge-for-contact-form-7-and-vk' )}]</span>
-                    ) : null}
+                    ) : null)}
                 </div>
 
                 <div className="frame status-bar">

@@ -3,7 +3,7 @@
 import React, {useState} from 'react';
 import {apiCreateChannel} from '../utils/api';
 
-const NewChannel = ({onCreated}) => {
+const NewChannel = ({onCreated, disabled = false}) => {
     const [saving, setSaving] = useState(false);
 
     const handleCreateChannel = async () => {
@@ -21,7 +21,7 @@ const NewChannel = ({onCreated}) => {
     };
 
     return (
-        <button className="add-button add-channel-button" onClick={handleCreateChannel} disabled={saving}>
+        <button className="add-button add-channel-button" onClick={handleCreateChannel} disabled={saving || disabled}>
             {wp.i18n.__( 'Create Channel', 'message-bridge-for-contact-form-7-and-vk' )}
         </button>
     );

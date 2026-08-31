@@ -36,7 +36,8 @@ Execution status as of 2026-08-31:
 - `T10`: completed; Long Poll fetch now coordinates with maintenance/fetch locks, returns structured transient errors, preserves `failed=1/2/3` semantics, and does not advance `longPollTs` after non-ignorable per-update processing failures.
 - `T11`: completed; CF7 delivery now returns per-channel/per-recipient structured results, continues later active chats after one VK failure, keeps CF7 success independent from VK transport failure, and emits sanitized `cf7vk_deliveries_completed` summaries.
 - `T12`: completed; React REST requests now use typed sanitized `ApiError` diagnostics, paginated bot/chat/channel and CF7 form collection loading, duplicate-ID protection, fail-closed later-page errors, and permalink-safe force-delete URLs.
-- `T13`: todo; unblocked by completed `T12`.
+- `T13`: completed; admin bootstrap now keeps independent resource state, preserves loaded sections across unrelated REST failures, exposes targeted load errors, retries only failed resources, disables dependency-gated controls, and wraps the settings app in an error boundary.
+- `T14`: todo; unblocked by completed `T12`, `T13`, and `T9`.
 
 Completed first execution batch after approval:
 
@@ -45,7 +46,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T13. Add React Resource State, Error Boundary, And Retry-Failed UI`
+- `T14. Harden Admin Mutation Sequencing, State Safety, And Selectors`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -1001,7 +1002,7 @@ Notes/Risks:
 
 ## T13. Add React Resource State, Error Boundary, And Retry-Failed UI
 
-Status: todo
+Status: completed
 
 Goal: prevent a single failed admin resource from blanking the settings screen.
 
@@ -1043,10 +1044,35 @@ Dependencies:
 Notes/Risks:
 
 - Keep visible text concise and consistent with existing plugin terminology.
+- Implemented files:
+  - updates to `plugin-dir/react/src/App.js`;
+  - updates to `plugin-dir/react/src/App.scss`;
+  - updates to `plugin-dir/react/src/App.test.js`;
+  - updates to `plugin-dir/react/src/components/Bot.js`;
+  - updates to `plugin-dir/react/src/components/BotView.js`;
+  - updates to `plugin-dir/react/src/components/Channel.js`;
+  - updates to `plugin-dir/react/src/components/ChannelView.js`;
+  - updates to `plugin-dir/react/src/components/NewBot.js`;
+  - updates to `plugin-dir/react/src/components/NewChannel.js`.
+- `App` now loads bots, channels, chats, forms, and each relation collection through independent resource states and `Promise.allSettled`.
+- Loaded bot/channel sections remain visible when another resource fails; failed resources show a top-level retry action and targeted section/card messages.
+- `Retry failed requests` reloads only resources currently in `error` state.
+- Bot/channel creation buttons and channel form/bot/chat controls are disabled or replaced with targeted loading/error states until their required resource data is ready.
+- `SettingsErrorBoundary` contains render failures and exposes a retry action without logging raw exception details.
+- Verification evidence:
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 4 suites, 26 tests.
+  - `npm --prefix plugin-dir/react run build` passed.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 100 tests, 0 failures, 10 PHP 8.1 dependency-heavy skips.
+  - `git diff --check` passed.
+  - `./scripts/build-release-zip.sh` and `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed.
+  - Current candidate ZIP SHA-256 is `fe1193428ca016d84f3da20b0548e7af24754c5e31afbafcda444ed3a77ce8ef`; size is `261384` bytes.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T174649Z-7548.WoDplk/results/summary.json`, 26 steps, 26 passed, 0 skipped, 0 failures.
+  - `tests/stability/e1-smoke-matrix.sh` passed: summary `/tmp/cf7vk-e1-20260831T174747Z-10270.Barn9V/results/summary.json`, 166 steps, 166 passed, 0 skipped, 0 failures.
+- Known build-chain noise remains from Create React App and React test tooling: dependency deprecation warnings, the undeclared `@babel/plugin-proposal-private-property-in-object` warning, and ReactDOMTestUtils `act` warnings. These are tracked by T16 and did not fail T13 verification.
 
 ## T14. Harden Admin Mutation Sequencing, State Safety, And Selectors
 
-Status: waiting_dependency
+Status: todo
 
 Goal: make admin CRUD and relation mutations safe under failures and testable in browser E2E.
 

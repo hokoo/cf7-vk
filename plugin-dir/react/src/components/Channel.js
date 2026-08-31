@@ -31,7 +31,8 @@ const Channel = ({
     onChannelRemoved,
     refreshBotChannelConnections,
     refreshChatChannelConnections,
-    refreshFormChannelConnections
+    refreshFormChannelConnections,
+    dataAvailability = {forms: 'ready', bots: 'ready', chats: 'ready'}
 }) => {
     const [titleValue, setTitleValue] = useState(channel.title?.rendered || '');
     const [saving, setSaving] = useState(false);
@@ -303,6 +304,7 @@ const Channel = ({
             deleteChannel={deleteChannel}
             getToggleButtonLabel={getToggleButtonLabel}
             renderChannelClasses={renderChannelClasses}
+            dataAvailability={dataAvailability}
         />
     );
 };
