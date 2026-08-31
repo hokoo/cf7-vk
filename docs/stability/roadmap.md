@@ -53,7 +53,8 @@ Implementation progress as of 2026-09-01:
 - `T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate`: completed.
 - `T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke`: completed.
 - `T19. Add Fake VK Form Delivery And Admin Setup E2E`: completed.
-- Next runnable tasks: `QA1`, `QA2`, `QA3`, `QA4`, and `QA6`.
+- `QA1`, `QA2`, `QA3`, `QA4`, and `QA6`: completed.
+- Remaining decision-gated task: `T20. Add Manual WordPress.org Promotion Gate`.
 
 ## Reference Stability Scope
 

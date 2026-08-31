@@ -44,21 +44,21 @@ Execution status as of 2026-09-01:
 - `T18`: completed; real WordPress REST/admin smoke and Playwright browser lifecycle smoke are implemented and passing locally.
 - `T19`: completed; fake VK public-submit, partial-failure, admin setup, deletion safety, and redacted evidence smoke passes locally.
 - `T20`: waiting for owner approval of the WordPress.org production promotion policy.
-- `QA1`, `QA2`, `QA3`, `QA4`, and `QA6`: runnable after completed implementation tasks.
+- `QA1`: completed after fixing the missing E1 uninstall cleanup assertion.
+- `QA2`: completed; lifecycle and migration integrity QA passed.
+- `QA3`: completed; VK gateway, redaction, credentials, Long Poll, and delivery QA passed.
+- `QA4`: completed after fixing E4 smoke fail-closed evidence handling.
 - `QA5`: waiting on `T20`.
+- `QA6`: completed; fake VK E2E QA passed against the current rebuilt candidate ZIP.
 
 Completed first execution batch after approval:
 
 - `T1. Add PHP Test Runner And Baseline Unit Harness`
 - `T2. Add Deterministic Release ZIP Builder And Validator`
 
-Current next execution targets:
+Current next execution target:
 
-- `QA1. Independent QA For Test And Release Foundation`
-- `QA2. Independent QA For Lifecycle And Migration Integrity`
-- `QA3. Independent QA For VK Gateway And Delivery`
-- `QA4. Independent QA For REST And Admin UI`
-- `QA6. Independent QA For Fake VK E2E`
+- `T20. Add Manual WordPress.org Promotion Gate`, after owner approval of the WordPress.org production promotion policy.
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -1493,11 +1493,11 @@ Notes/Risks:
 - Verification evidence:
   - `bash -n tests/stability/e4-rest-ui-smoke.sh && bash -n tests/stability/e5-browser-smoke.sh && php -l tests/stability/wp-e4-rest-ui-smoke.php && php -l tests/stability/wp-e5-browser-fixture.php && node -c tests/e2e/e5-browser-smoke.spec.js && node -c tests/e2e/playwright.config.js` passed.
   - `./scripts/build-release-zip.sh` passed and validated the release ZIP.
-  - Current candidate ZIP SHA-256 is `dd7b87b80ee2e60680f99a6ec6cd58e490145615e129cc724664d7fa98dbc1b8`; size is `218908` bytes.
-  - `tests/stability/e4-rest-ui-smoke.sh` passed: summary `/tmp/cf7vk-e4-smoke-20260831T193622Z-21610.rCJGlo/results/summary.json`, 28 smoke checks passed, 0 failed, seeded 12 bots / 12 chats / 12 channels / 12 forms.
+  - Current rebuilt candidate ZIP SHA-256 is `917a50f6f30b0ba5386d232dc5b36cc073d6f0d1baf2514ef8bbe73af6ecdaf9`; size is `218908` bytes.
+  - `tests/stability/e4-rest-ui-smoke.sh` passed after QA wrapper hardening: summary `/tmp/cf7vk-e4-smoke-20260831T201446Z-61485.Yb2UhO/results/summary.json`, 28 smoke checks passed, 0 failed, seeded 12 bots / 12 chats / 12 channels / 12 forms.
   - E4 pagination evidence confirmed bots, chats, and channels page 1 count 10 and page 2 count 2; CF7 forms page 1 count 10 and page 2 count 3.
   - E4 mutation evidence confirmed POST `/ping`, POST `/fetch_updates`, and POST `/credentials` through the fake VK gateway.
-  - `tests/stability/e5-browser-smoke.sh --skip-browser-install` passed: summary `/tmp/cf7vk-e5-browser-20260831T193734Z-23941.sQkOPR/results/summary.json`, 27 passed steps, 0 failed.
+  - `tests/stability/e5-browser-smoke.sh --skip-browser-install` passed after QA rerun: summary `/tmp/cf7vk-e5-browser-20260831T201141Z-58140.Xoxbvz/results/summary.json`, 27 passed steps, 0 failed.
   - E5 browser checks all passed: authenticated render/reactivation, no page errors, no unexpected console errors, full-page background for `body`, `#wpwrap`, `#wpcontent`, `#wpbody`, `#wpbody-content`, and `#cf7-vk-admin-page`, system notice hidden with plugin notice visible, pagination beyond ten, and POST mutation observation with `X-WP-Nonce`.
   - E5 browser REST evidence loaded forms count 13, bots/chats/channels count 12 each, and observed protected POST `/wp/v2/cf7vk_bot/{id}/ping` and `/fetch_updates` requests from the real admin screen.
   - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 10 suites, 48 tests.
@@ -1590,7 +1590,7 @@ Completion Evidence:
 - `php -l tests/stability/wp-e6-form-delivery-fixture.php` passed.
 - `node -c tests/e2e/e6-form-delivery.spec.js` passed.
 - `node -c tests/e2e/e6-playwright.config.js` passed.
-- `tests/stability/e6-form-delivery-smoke.sh --skip-browser-install` passed: summary `/tmp/cf7vk-e6-delivery-20260831T195921Z-32593.2ZRb0z/results/summary.json`, 45 passed steps, 0 failed.
+- `tests/stability/e6-form-delivery-smoke.sh --skip-browser-install` passed against the rebuilt current candidate ZIP: summary `/tmp/cf7vk-e6-delivery-20260831T200428Z-38722.gGXQCU/results/summary.json`, 45 passed steps, 0 failed, candidate SHA-256 `917a50f6f30b0ba5386d232dc5b36cc073d6f0d1baf2514ef8bbe73af6ecdaf9`.
 - E6 browser result passed all 25 required checks: public CF7 render/submit, two expected `messages.send` attempts, no unexpected recipient, partial first-recipient failure with later-recipient continuity, no page/console errors, admin bot/channel/form/chat/relation setup, assigned-chat delivery, redacted evidence, and deletion safety.
 
 ## T20. Add Manual WordPress.org Promotion Gate
@@ -1691,7 +1691,7 @@ Notes/Risks:
 
 ## QA1. Independent QA For Test And Release Foundation
 
-Status: todo
+Status: completed
 
 Goal: independently verify `T1`, `T2`, and `T3` against their acceptance criteria.
 
@@ -1729,9 +1729,20 @@ Notes/Risks:
 
 - Use an independent worker/agent where tooling is available.
 
+Completion Evidence:
+
+- Independent QA initially found a real T3 automation gap: E1 captured `after-uninstall` snapshots but did not assert that plugin-owned files, active plugin entries, posts, relations, tables, options, cron, and locks were gone.
+- Added `assert_uninstall_cleanup()` to `tests/stability/e1-smoke-matrix.sh` and called it after fresh and upgrade uninstall snapshots.
+- `bash -n tests/stability/e1-smoke-matrix.sh` passed.
+- `php plugin-dir/tests/run.php` passed locally through the PHP 8.0 compatibility runner: 103 tests, 0 failures, 10 skips due PHP 8.1-targeted syntax/dependencies.
+- `./scripts/build-release-zip.sh` passed and rebuilt `dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip`, version `0.1.4`, size `218908`, SHA-256 `917a50f6f30b0ba5386d232dc5b36cc073d6f0d1baf2514ef8bbe73af6ecdaf9`.
+- `tests/stability/e1-smoke-matrix.sh --case fresh` passed after the fix: summary `/tmp/cf7vk-e1-20260831T200858Z-50364.XOKGCk/results/summary.json`, 27 passed steps, 0 failed, including `fresh / assert-after-uninstall`.
+- `tests/stability/e1-smoke-matrix.sh --case upgrade-v-0.1.4` passed after the fix: summary `/tmp/cf7vk-e1-20260831T201007Z-54425.8Lhkqg/results/summary.json`, 39 passed steps, 0 failed, including `upgrade-v-0.1.4 / assert-after-uninstall`.
+- QA1 follow-up verdict: pass, no remaining defects. Full Docker matrix was not rerun after this narrow harness fix; the fresh and representative upgrade paths cover both shared assertion call sites.
+
 ## QA2. Independent QA For Lifecycle And Migration Integrity
 
-Status: todo
+Status: completed
 
 Goal: verify `T4`, `T5`, and `T6` before closing the lifecycle/migration epic.
 
@@ -1767,9 +1778,18 @@ Notes/Risks:
 
 - Pay special attention to destructive cleanup scope.
 
+Completion Evidence:
+
+- Independent QA2 verdict: pass for `T4`, `T5`, and `T6`; no blocking defects found.
+- Static checks passed for maintenance, migration, entrypoint, T4/T5 tests, T6 stability PHP scripts, `bash -n tests/stability/e1-smoke-matrix.sh`, and JSON schemas/manifests.
+- Existing full E1/T6 matrix evidence remains green: `/tmp/cf7vk-e1-20260831T160122Z-37689.bEHEDH/results/summary.json`, 165 passed steps, 0 failed.
+- QA verified upgrade baselines `0.1.0` through `0.1.4`: migration completed, attempts stayed at `1`, relation total returned to expected `11`, duplicate signatures stayed `0`, and second-run lifecycle fingerprints were stable.
+- QA verified damaged fixture repair and uninstall snapshots: orphan repair counts matched expectations, plugin-owned options/posts/tables/locks were removed, and CF7 form posts remained.
+- Residual non-blocking improvement: encode rollback lifecycle fingerprint comparison as a first-class jq assertion in a future harness hardening pass.
+
 ## QA3. Independent QA For VK Gateway And Delivery
 
-Status: todo
+Status: completed
 
 Goal: verify `T7`, `T8`, `T9`, `T10`, and `T11` before fake E2E depends on them.
 
@@ -1809,9 +1829,18 @@ Notes/Risks:
 
 - Do not accept live VK calls as QA evidence for automated gates.
 
+Completion Evidence:
+
+- Independent QA3 verdict: pass for `T7` through `T11`; no blocking defects found.
+- `composer test` passed via local compatibility runner: 103 tests, 0 failures, 10 PHP 8.1-dependent skips.
+- `docker run --rm -v "$PWD/plugin-dir":/app -w /app php:8.3-cli php tests/run.php` passed: 103 tests, 463 assertions.
+- QA verified the injectable `cf7vk_vk_gateway` contract, `WordPressVkGateway`, `VkDeliveryResult` normalization, central log redaction before hooks/database storage, transactional credential validation, same/different identity relation behavior, Long Poll lock and `failed=1/2/3` semantics, cursor preservation on non-ignorable errors, and per-recipient CF7 delivery continuity.
+- QA confirmed no live VK calls are used as evidence and no raw E1 fake token/key/peer canaries appeared in result artifacts.
+- Residual non-blocking note: legacy hooks still receive richer objects/context for backward compatibility; sanitized guarantees are strongest for logs, test evidence, and `cf7vk_deliveries_completed`.
+
 ## QA4. Independent QA For REST And Admin UI
 
-Status: todo
+Status: completed
 
 Goal: verify `T12`, `T13`, `T14`, `T15`, and `T16`.
 
@@ -1850,6 +1879,17 @@ Notes/Risks:
 
 - Check for brittle selectors and unexpected console errors.
 
+Completion Evidence:
+
+- Independent QA4 product verdict: pass for `T12` through `T16`; no blocking REST/admin UI defects found.
+- QA found a gate reliability issue in `tests/stability/e4-rest-ui-smoke.sh`: setup did not explicitly fail closed after failed `run_logged` calls, and empty/non-object smoke JSON could lead to confusing shell arithmetic output.
+- Fixed E4 wrapper reliability by making `setup_site()` return on each failed setup command, requiring parseable object evidence with numeric `.summary.total`, `.summary.passed`, and `.summary.failed`, and exiting before smoke when setup fails.
+- `bash -n tests/stability/e4-rest-ui-smoke.sh` passed.
+- `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 10 suites, 48 tests.
+- `tests/stability/e4-rest-ui-smoke.sh` passed after the wrapper fix: summary `/tmp/cf7vk-e4-smoke-20260831T201446Z-61485.Yb2UhO/results/summary.json`, smoke summary 28 passed checks, 0 failed.
+- `tests/stability/e5-browser-smoke.sh --skip-browser-install` passed: summary `/tmp/cf7vk-e5-browser-20260831T201141Z-58140.Xoxbvz/results/summary.json`, 27 passed steps, 0 failed, Playwright passed all 7 browser checks.
+- Residual non-blocking note: real non-pretty destructive delete is covered at unit/component level in QA4 and by browser deletion safety in E6.
+
 ## QA5. Independent QA For Release And Promotion Gates
 
 Status: waiting_dependency
@@ -1867,7 +1907,8 @@ Out of Scope:
 
 DoR:
 
-- `T17` and `T20` are in review.
+- `T17` completed.
+- `T20` completed after owner approval of the WordPress.org production promotion policy.
 - Required CI artifacts are available or local substitutes are documented.
 
 DoD:
@@ -1890,7 +1931,7 @@ Notes/Risks:
 
 ## QA6. Independent QA For Fake VK E2E
 
-Status: todo
+Status: completed
 
 Goal: verify `T18` and `T19` against the public-submit and admin-setup acceptance criteria.
 
@@ -1928,3 +1969,12 @@ Dependencies:
 Notes/Risks:
 
 - QA must verify behavior against acceptance criteria, not against implementation claims.
+
+Completion Evidence:
+
+- Independent QA6 verdict: pass for `T18` and `T19`; no blocking defects found.
+- QA verified fake VK gateway/Long Poll implementation, live-egress blocker, sanitized public evidence payloads, E4/E5/E6 CI wiring, public submit checks, partial failure continuity, admin graph setup, and deletion safety.
+- Main delivery reran E6 after rebuilding the candidate ZIP to remove the earlier SHA caveat: `tests/stability/e6-form-delivery-smoke.sh --skip-browser-install` passed with summary `/tmp/cf7vk-e6-delivery-20260831T200428Z-38722.gGXQCU/results/summary.json`.
+- Current E6 candidate SHA-256: `917a50f6f30b0ba5386d232dc5b36cc073d6f0d1baf2514ef8bbe73af6ecdaf9`; `failed_steps=0`, `passed_steps=45`, Playwright status `passed`, all 25 required checks passed.
+- E6 proved public CF7 render/submit, two expected `messages.send` attempts, no unexpected recipient, partial first-recipient failure with later-recipient continuity, no page/console errors, admin bot/channel/form/chat/relation setup, assigned-chat delivery, redacted evidence, and deletion safety.
+- Residual non-blocking note: earlier public/partial fake VK call details are preserved mainly in check summaries after later fixture resets; this satisfies current AC but limits forensic depth.

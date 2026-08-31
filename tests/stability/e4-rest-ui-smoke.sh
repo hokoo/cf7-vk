@@ -366,19 +366,19 @@ retry_wp() {
 }
 
 setup_site() {
-	run_logged "wordpress" "db_up" dc up -d db
-	run_logged "wordpress" "core_download" retry_wp core download --path=/var/www/html --version="${WP_VERSION}" --force
-	run_logged "wordpress" "config_create" wp_run config create --path=/var/www/html --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=db:3306 --skip-check --force
-	run_logged "wordpress" "db_wait" retry_wp db check --path=/var/www/html --skip-ssl
-	run_logged "wordpress" "core_install" wp_run core install --path=/var/www/html --url="http://${CURRENT_PROJECT}.test" --title="CF7VK E4 REST UI Smoke" --admin_user=admin --admin_password=admin-password --admin_email=admin@example.test
+	run_logged "wordpress" "db_up" dc up -d db || return 1
+	run_logged "wordpress" "core_download" retry_wp core download --path=/var/www/html --version="${WP_VERSION}" --force || return 1
+	run_logged "wordpress" "config_create" wp_run config create --path=/var/www/html --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --dbhost=db:3306 --skip-check --force || return 1
+	run_logged "wordpress" "db_wait" retry_wp db check --path=/var/www/html --skip-ssl || return 1
+	run_logged "wordpress" "core_install" wp_run core install --path=/var/www/html --url="http://${CURRENT_PROJECT}.test" --title="CF7VK E4 REST UI Smoke" --admin_user=admin --admin_password=admin-password --admin_email=admin@example.test || return 1
 
 	if [ "${CF7_VERSION}" = "latest" ]; then
-		run_logged "wordpress" "cf7_install" retry_wp plugin install contact-form-7 --activate
+		run_logged "wordpress" "cf7_install" retry_wp plugin install contact-form-7 --activate || return 1
 	else
-		run_logged "wordpress" "cf7_install" retry_wp plugin install contact-form-7 --version="${CF7_VERSION}" --activate
+		run_logged "wordpress" "cf7_install" retry_wp plugin install contact-form-7 --version="${CF7_VERSION}" --activate || return 1
 	fi
 
-	run_logged "wordpress" "candidate_install" wp_run plugin install "/artifacts/${PLUGIN_SLUG}-candidate.zip" --force --activate
+	run_logged "wordpress" "candidate_install" wp_run plugin install "/artifacts/${PLUGIN_SLUG}-candidate.zip" --force --activate || return 1
 }
 
 run_smoke() {
@@ -390,15 +390,15 @@ run_smoke() {
 		exit_code="$?"
 	fi
 
-	if ! jq -e 'type == "object" and (.summary.failed | type == "number")' "${SMOKE_JSON}" >/dev/null 2>&1; then
+	if ! [ -s "${SMOKE_JSON}" ] || ! jq -e 'type == "object" and (.summary | type == "object") and (.summary.total | type == "number") and (.summary.passed | type == "number") and (.summary.failed | type == "number")' "${SMOKE_JSON}" >/dev/null 2>&1; then
 		fail_step "smoke" "run" "E4 smoke did not produce parseable JSON evidence." "$(jq -nc --arg stdout "${SMOKE_JSON}" --arg stderr "${SMOKE_STDERR}" --argjson exit_code "${exit_code}" '{stdout:$stdout,stderr:$stderr,exit_code:$exit_code}')"
 		return 1
 	fi
 
 	local total passed failed
-	total="$(jq '.summary.total' "${SMOKE_JSON}")"
-	passed="$(jq '.summary.passed' "${SMOKE_JSON}")"
-	failed="$(jq '.summary.failed' "${SMOKE_JSON}")"
+	total="$(jq -r '.summary.total' "${SMOKE_JSON}")"
+	passed="$(jq -r '.summary.passed' "${SMOKE_JSON}")"
+	failed="$(jq -r '.summary.failed' "${SMOKE_JSON}")"
 
 	emit "smoke" "run" "pass" "E4 smoke completed and emitted machine-readable evidence." "$(jq -nc --arg result "${SMOKE_JSON}" --arg stderr "${SMOKE_STDERR}" --argjson exit_code "${exit_code}" --argjson total "${total}" --argjson passed "${passed}" --argjson failed "${failed}" '{result:$result,stderr:$stderr,exit_code:$exit_code,total:$total,passed:$passed,failed:$failed}')"
 
@@ -422,7 +422,7 @@ write_compose_file
 CURRENT_PROJECT="$(project_name)"
 cleanup_project
 
-setup_site
+setup_site || exit 1
 run_smoke || true
 write_summary
 

@@ -693,6 +693,33 @@ assert_active_version() {
 	assert_state_jq "${case_id}" "${label}" ".plugin.active == true and .plugin.version == \"${expected}\"" "Plugin is active at expected version ${expected}."
 }
 
+assert_uninstall_cleanup() {
+	local case_id="$1"
+	local label="$2"
+
+	assert_state_jq "${case_id}" "${label}" \
+		'.plugin.file_exists == false
+		and .plugin.active == false
+		and ((.active_plugins // []) | index("message-bridge-for-contact-form-7-and-vk/cf7-vk.php") == null)
+		and ((.active_plugins // []) | index("cf7-vk/cf7-vk.php") == null)
+		and .post_counts.cf7vk_bot == 0
+		and .post_counts.cf7vk_chat == 0
+		and .post_counts.cf7vk_channel == 0
+		and .relations.exists == false
+		and .relations.total == 0
+		and .relations.meta_total == 0
+		and .tables.post_connections_cf7_vk.exists == false
+		and .tables.post_connections_meta_cf7_vk.exists == false
+		and .tables.cf7vk_log.exists == false
+		and ([.options[]?.count] | add // 0) == 0
+		and .cron.cf7vk_cleanup.total == 0
+		and .cron.cf7vk_migrations.total == 0
+		and .migration.version_option == null
+		and .migration.state_exists == false
+		and .migration.lock_exists == false' \
+		"Uninstall removed plugin files, active-plugin entries, plugin-owned posts, relations, tables, options, cron, and locks."
+}
+
 candidate_version() {
 	zip_header_version "${ARTIFACT_DIR}/${PLUGIN_SLUG}-candidate.zip" "$(jq -r '.candidate.header_path_in_zip' "${SOURCE_MANIFEST}")"
 }
@@ -729,7 +756,11 @@ run_fresh_case() {
 		run_logged "${case_id}" "reactivate" wp_run plugin activate "${PLUGIN_SLUG}" || rc=1
 		write_state "${case_id}" "after-reactivate" || rc=1
 		run_logged "${case_id}" "uninstall" wp_run plugin uninstall "${PLUGIN_SLUG}" --deactivate || rc=1
-		write_state "${case_id}" "after-uninstall" || rc=1
+		if write_state "${case_id}" "after-uninstall"; then
+			assert_uninstall_cleanup "${case_id}" "after-uninstall" || rc=1
+		else
+			rc=1
+		fi
 	else
 		rc=1
 	fi
@@ -807,7 +838,11 @@ run_upgrade_case() {
 		run_logged "${case_id}" "reactivate" wp_run plugin activate "${PLUGIN_SLUG}" || rc=1
 		write_state "${case_id}" "after-reactivate" || rc=1
 		run_logged "${case_id}" "uninstall" wp_run plugin uninstall "${PLUGIN_SLUG}" --deactivate || rc=1
-		write_state "${case_id}" "after-uninstall" || rc=1
+		if write_state "${case_id}" "after-uninstall"; then
+			assert_uninstall_cleanup "${case_id}" "after-uninstall" || rc=1
+		else
+			rc=1
+		fi
 	fi
 
 	if [ "${rc}" -eq 0 ]; then
