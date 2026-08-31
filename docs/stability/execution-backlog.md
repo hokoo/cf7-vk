@@ -1,6 +1,6 @@
 # CF7 VK Stability Hardening Execution Backlog
 
-Date: 2026-08-31
+Date: 2026-09-01
 
 This backlog follows the `decompose-work` task shape. Status values are intentionally conservative:
 
@@ -21,7 +21,7 @@ Recommended order:
 7. `T17`, `T18`, `T19`
 8. `QA1` through `QA6`
 
-Execution status as of 2026-08-31:
+Execution status as of 2026-09-01:
 
 - `S0`: completed by owner approval in chat.
 - `T1`: completed for source/test harness; locally verified through compat runner because the available CLI runtime is PHP 8.0.30 while the plugin requires PHP 8.1.
@@ -42,16 +42,23 @@ Execution status as of 2026-08-31:
 - `T16`: completed; React build/test tooling now uses `@wordpress/scripts`, emits `main.asset.php`, and PHP enqueues asset dependencies/version from that metadata.
 - `T17`: completed; release workflow, release audits, Plugin Check, release ZIP negative tests, and support matrix wrapper are implemented.
 - `T18`: completed; real WordPress REST/admin smoke and Playwright browser lifecycle smoke are implemented and passing locally.
-- `T19`: todo; unblocked by completed `T18`.
+- `T19`: completed; fake VK public-submit, partial-failure, admin setup, deletion safety, and redacted evidence smoke passes locally.
+- `T20`: waiting for owner approval of the WordPress.org production promotion policy.
+- `QA1`, `QA2`, `QA3`, `QA4`, and `QA6`: runnable after completed implementation tasks.
+- `QA5`: waiting on `T20`.
 
 Completed first execution batch after approval:
 
 - `T1. Add PHP Test Runner And Baseline Unit Harness`
 - `T2. Add Deterministic Release ZIP Builder And Validator`
 
-Current next execution target:
+Current next execution targets:
 
-- `T19. Add Fake VK Form Delivery And Admin Setup E2E`
+- `QA1. Independent QA For Test And Release Foundation`
+- `QA2. Independent QA For Lifecycle And Migration Integrity`
+- `QA3. Independent QA For VK Gateway And Delivery`
+- `QA4. Independent QA For REST And Admin UI`
+- `QA6. Independent QA For Fake VK E2E`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -1497,7 +1504,7 @@ Notes/Risks:
 
 ## T19. Add Fake VK Form Delivery And Admin Setup E2E
 
-Status: todo
+Status: completed
 
 Goal: prove a real public CF7 form submission produces expected VK delivery attempts through deterministic fake VK transport, and prove the admin setup graph behind it.
 
@@ -1508,7 +1515,7 @@ Scope:
 - Add `tests/e2e/e6-form-delivery.spec.js`.
 - Add `tests/e2e/e6-playwright.config.js` if the delivery run needs distinct reporting.
 - Install candidate ZIP in isolated WordPress with Contact Form 7.
-- Add mu-plugin fake VK transport using `pre_http_request`.
+- Add mu-plugin fake VK transport through the `cf7vk_vk_gateway` contract, with `pre_http_request` as a fail-closed live-egress blocker.
 - Intercept:
   - VK API methods used by ping, community lookup, users lookup, conversation lookup, and `messages.send`;
   - VK Bots Long Poll server requests used by `checkLongPoll`.
@@ -1573,6 +1580,18 @@ Notes/Risks:
 
 - VK Long Poll has a different response shape from Telegram `getUpdates`; fixture design must model `failed`, `ts`, and `updates` explicitly.
 - Use hashed/bucketed peer IDs in evidence so tests can compare recipients without leaking raw identifiers.
+
+Completion Evidence:
+
+- Implemented `tests/stability/e6-form-delivery-smoke.sh`, `tests/stability/wp-e6-form-delivery-fixture.php`, `tests/e2e/e6-form-delivery.spec.js`, and `tests/e2e/e6-playwright.config.js`.
+- Fake VK gateway covers `groups.getById`, `groups.getLongPollServer`, `messages.getByConversationMessageId`, `users.get`, `messages.send`, and VK Bots Long Poll responses.
+- Evidence exposes token hashes, Long Poll key buckets, peer buckets, response summaries, call order, and marker lists, while redacting raw tokens, keys, peer IDs, private chat labels, and submitted private CF7 values.
+- `bash -n tests/stability/e6-form-delivery-smoke.sh` passed.
+- `php -l tests/stability/wp-e6-form-delivery-fixture.php` passed.
+- `node -c tests/e2e/e6-form-delivery.spec.js` passed.
+- `node -c tests/e2e/e6-playwright.config.js` passed.
+- `tests/stability/e6-form-delivery-smoke.sh --skip-browser-install` passed: summary `/tmp/cf7vk-e6-delivery-20260831T195921Z-32593.2ZRb0z/results/summary.json`, 45 passed steps, 0 failed.
+- E6 browser result passed all 25 required checks: public CF7 render/submit, two expected `messages.send` attempts, no unexpected recipient, partial first-recipient failure with later-recipient continuity, no page/console errors, admin bot/channel/form/chat/relation setup, assigned-chat delivery, redacted evidence, and deletion safety.
 
 ## T20. Add Manual WordPress.org Promotion Gate
 
@@ -1672,7 +1691,7 @@ Notes/Risks:
 
 ## QA1. Independent QA For Test And Release Foundation
 
-Status: waiting_dependency
+Status: todo
 
 Goal: independently verify `T1`, `T2`, and `T3` against their acceptance criteria.
 
@@ -1688,7 +1707,7 @@ Out of Scope:
 
 DoR:
 
-- `T1`, `T2`, and `T3` are in review.
+- `T1`, `T2`, and `T3` are completed.
 
 DoD:
 
@@ -1712,7 +1731,7 @@ Notes/Risks:
 
 ## QA2. Independent QA For Lifecycle And Migration Integrity
 
-Status: waiting_dependency
+Status: todo
 
 Goal: verify `T4`, `T5`, and `T6` before closing the lifecycle/migration epic.
 
@@ -1727,7 +1746,7 @@ Out of Scope:
 
 DoR:
 
-- `T4`, `T5`, and `T6` are in review.
+- `T4`, `T5`, and `T6` are completed.
 
 DoD:
 
@@ -1750,7 +1769,7 @@ Notes/Risks:
 
 ## QA3. Independent QA For VK Gateway And Delivery
 
-Status: waiting_dependency
+Status: todo
 
 Goal: verify `T7`, `T8`, `T9`, `T10`, and `T11` before fake E2E depends on them.
 
@@ -1766,7 +1785,7 @@ Out of Scope:
 
 DoR:
 
-- `T7` through `T11` are in review.
+- `T7` through `T11` are completed.
 
 DoD:
 
@@ -1792,7 +1811,7 @@ Notes/Risks:
 
 ## QA4. Independent QA For REST And Admin UI
 
-Status: waiting_dependency
+Status: todo
 
 Goal: verify `T12`, `T13`, `T14`, `T15`, and `T16`.
 
@@ -1807,7 +1826,7 @@ Out of Scope:
 
 DoR:
 
-- `T12` through `T16` are in review.
+- `T12` through `T16` are completed.
 
 DoD:
 
@@ -1871,7 +1890,7 @@ Notes/Risks:
 
 ## QA6. Independent QA For Fake VK E2E
 
-Status: waiting_dependency
+Status: todo
 
 Goal: verify `T18` and `T19` against the public-submit and admin-setup acceptance criteria.
 
@@ -1887,7 +1906,7 @@ Out of Scope:
 
 DoR:
 
-- `T18` and `T19` are in review.
+- `T18` and `T19` are completed.
 - Candidate ZIP exists.
 
 DoD:

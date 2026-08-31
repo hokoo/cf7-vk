@@ -32,7 +32,7 @@ Bring `cf7-vk` to the same stability standard recently delivered in `cf7-telegra
 
 This document started as the delivery plan. Code work began after owner approval on 2026-08-31; current execution status and evidence live in `docs/stability/execution-backlog.md`.
 
-Implementation progress as of 2026-08-31:
+Implementation progress as of 2026-09-01:
 
 - `T1. Add PHP Test Runner And Baseline Unit Harness`: completed.
 - `T2. Add Deterministic Release ZIP Builder And Validator`: completed.
@@ -52,7 +52,8 @@ Implementation progress as of 2026-08-31:
 - `T16. Migrate React Build To WordPress Scripts`: completed.
 - `T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate`: completed.
 - `T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke`: completed.
-- Next execution-ready task: `T19. Add Fake VK Form Delivery And Admin Setup E2E`.
+- `T19. Add Fake VK Form Delivery And Admin Setup E2E`: completed.
+- Next runnable tasks: `QA1`, `QA2`, `QA3`, `QA4`, and `QA6`.
 
 ## Reference Stability Scope
 
