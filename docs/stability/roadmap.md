@@ -45,7 +45,8 @@ Implementation progress as of 2026-08-31:
 - `T9. Add Transactional VK Credential Update Contract`: completed.
 - `T10. Harden VK Long Poll Cursor, Locks, And Update Processing`: completed.
 - `T11. Normalize CF7 Delivery Results And Per-Recipient Failure Handling`: completed.
-- Next execution-ready task: `T12. Harden REST API And React API Client`.
+- `T12. Harden REST API And React API Client`: completed.
+- Next execution-ready task: `T13. Add React Resource State, Error Boundary, And Retry-Failed UI`.
 
 ## Reference Stability Scope
 
@@ -343,6 +344,13 @@ Recommended action:
 - port Telegram E4 resource state model, error boundary, `ApiError`, safe URL/data redaction, and retry-failed behavior;
 - add React tests for partial success, partial failure, retry, invalid JSON, permission failures, and recoverable transport errors.
 
+Status as of 2026-08-31:
+
+- partially mitigated by T12 for the API-client layer;
+- `ApiError` now provides sanitized method, route, status, code, category, and data diagnostics;
+- invalid JSON, permission failures, transport failures, sensitive URL redaction, and later-page collection failures are covered by React unit tests;
+- the all-or-nothing app bootstrap, per-resource rendering, error boundary, and retry-failed UI remain open for T13.
+
 ### F10. CF7 forms are not paginated in the admin API client
 
 Evidence:
@@ -360,6 +368,12 @@ Recommended action:
 - implement a CF7-specific pagination helper using `per_page` and `offset`, matching Telegram E4;
 - prove more-than-10 form visibility in React unit tests and real WordPress smoke.
 
+Status as of 2026-08-31:
+
+- mitigated at the React API-client layer by T12;
+- `fetchForms()` now uses `per_page=100` plus `offset`, keeps loading while pages are full, deduplicates repeated IDs, and fails closed if a page request rejects;
+- real WordPress smoke with more-than-default form visibility remains part of T18 browser/admin evidence.
+
 ### F11. Delete URL construction is unsafe for non-pretty REST URLs
 
 Evidence:
@@ -376,6 +390,12 @@ Recommended action:
 - add `appendQueryParams` and `forceDeleteUrl` helpers;
 - use them for all force-delete calls;
 - add unit and Playwright coverage that exercises non-pretty REST route shapes.
+
+Status as of 2026-08-31:
+
+- mitigated at the React API-client layer by T12;
+- bot, channel, and chat deletion now append `force=true` as a separate query parameter for both pretty and non-pretty REST route shapes;
+- React unit tests cover `index.php?rest_route=/wp/v2/...` delete URLs, while real REST state confirmation remains part of T18.
 
 ### F12. React build tooling is still Create React App based
 

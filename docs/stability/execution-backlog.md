@@ -35,7 +35,8 @@ Execution status as of 2026-08-31:
 - `T9`: completed; credential updates now validate candidate group/token/API version through the VK gateway before persistence and reset bot-owned relations only after validated community identity changes.
 - `T10`: completed; Long Poll fetch now coordinates with maintenance/fetch locks, returns structured transient errors, preserves `failed=1/2/3` semantics, and does not advance `longPollTs` after non-ignorable per-update processing failures.
 - `T11`: completed; CF7 delivery now returns per-channel/per-recipient structured results, continues later active chats after one VK failure, keeps CF7 success independent from VK transport failure, and emits sanitized `cf7vk_deliveries_completed` summaries.
-- `T12`: todo; unblocked by completed `S0` and installable React dependencies.
+- `T12`: completed; React REST requests now use typed sanitized `ApiError` diagnostics, paginated bot/chat/channel and CF7 form collection loading, duplicate-ID protection, fail-closed later-page errors, and permalink-safe force-delete URLs.
+- `T13`: todo; unblocked by completed `T12`.
 
 Completed first execution batch after approval:
 
@@ -44,7 +45,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T12. Harden REST API And React API Client`
+- `T13. Add React Resource State, Error Boundary, And Retry-Failed UI`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -937,7 +938,7 @@ Notes/Risks:
 
 ## T12. Harden REST API And React API Client
 
-Status: todo
+Status: completed
 
 Goal: make admin REST traffic paginated, explicit, sanitized, and robust across WordPress permalink modes.
 
@@ -980,10 +981,27 @@ Dependencies:
 Notes/Risks:
 
 - This task can run before the `@wordpress/scripts` migration, but tests may be easier to stabilize after `T16`.
+- Implemented files:
+  - updates to `plugin-dir/react/src/utils/api.js`;
+  - `plugin-dir/react/src/utils/api.test.js`.
+- `ApiError` now carries `status`, `code`, `category`, `method`, sanitized `url`, and sanitized `data`.
+- Bots, chats, and channels use WordPress collection pagination with `per_page=100`, `page`, `orderby=id`, and `order=asc`.
+- Contact Form 7 forms use bounded offset pagination with `per_page=100`, `offset`, `orderby=id`, and `order=asc`, because the CF7 endpoint does not provide the same total-page contract.
+- Collection merging deduplicates by stable `id` and rejects the full load when a later page fails instead of returning partial success.
+- Delete helpers append `force=true` outside existing query strings, including non-pretty REST URLs such as `index.php?rest_route=/wp/v2/cf7vk_chat/`.
+- Diagnostics redact nonce/token/secret/password/key/peer/email/phone values in thrown errors and console diagnostics.
+- Verification evidence:
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 4 suites, 21 tests.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 100 tests, 0 failures, 10 PHP 8.1 dependency-heavy skips.
+  - `git diff --check` passed.
+  - `./scripts/build-release-zip.sh` and `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed.
+  - Current candidate ZIP SHA-256 is `4014e2f997da1d16985f24142325c32f52ceed69aba24592c407d41c663035a7`; size is `260326` bytes.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T173025Z-92678.HUSHz4/results/summary.json`, 26 steps, 26 passed, 0 skipped, 0 failures.
+  - `tests/stability/e1-smoke-matrix.sh` passed: summary `/tmp/cf7vk-e1-20260831T173123Z-95429.IrXhDm/results/summary.json`, 166 steps, 166 passed, 0 skipped, 0 failures.
 
 ## T13. Add React Resource State, Error Boundary, And Retry-Failed UI
 
-Status: waiting_dependency
+Status: todo
 
 Goal: prevent a single failed admin resource from blanking the settings screen.
 
