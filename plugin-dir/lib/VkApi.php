@@ -8,16 +8,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use iTRON\cf7Vk\Exceptions\TransportNotConfigured;
 use iTRON\cf7Vk\Exceptions\VkApiException;
+use iTRON\cf7Vk\Vk\VkDeliveryResult;
+use iTRON\cf7Vk\Vk\VkGateway;
+use iTRON\cf7Vk\Vk\WordPressVkGateway;
 
 class VkApi {
-	private const API_URL = 'https://api.vk.com/method/';
 	private string $accessToken;
 	private string $apiVersion;
+	private VkGateway $gateway;
 
 	/**
 	 * @throws TransportNotConfigured
 	 */
-	public function __construct( string $access_token, string $api_version = Bot::DEFAULT_API_VERSION ) {
+	public function __construct( string $access_token, string $api_version = Bot::DEFAULT_API_VERSION, ?VkGateway $gateway = null ) {
 		$access_token = trim( $access_token );
 
 		if ( '' === $access_token ) {
@@ -26,6 +29,7 @@ class VkApi {
 
 		$this->accessToken = $access_token;
 		$this->apiVersion = trim( $api_version ) ?: Bot::DEFAULT_API_VERSION;
+		$this->gateway = $gateway ?? $this->createGateway();
 	}
 
 	/**
@@ -73,45 +77,9 @@ class VkApi {
 	 * @throws VkApiException
 	 */
 	public function checkLongPoll( string $server, string $key, string $ts, int $wait = 25 ): array {
-		$response = wp_remote_get(
-			add_query_arg(
-				[
-					'act' => 'a_check',
-					'key' => $key,
-					'ts' => $ts,
-					'wait' => min( 90, max( 1, $wait ) ),
-				],
-				$server
-			),
-			[
-				'timeout' => min( 95, max( 10, $wait + 10 ) ),
-				'headers' => [
-					'Accept' => 'application/json',
-				],
-			]
-		);
+		$result = $this->gateway->longPoll( $server, $key, $ts, $wait );
 
-		if ( is_wp_error( $response ) ) {
-			$exception = VkApiException::fromWpError( $response );
-			throw $exception;
-		}
-
-		$status_code = (int) wp_remote_retrieve_response_code( $response );
-		$decoded = json_decode( wp_remote_retrieve_body( $response ), true );
-
-		if ( $status_code >= 400 ) {
-			$exception = VkApiException::longPollRequestFailed(
-				$status_code,
-				is_array( $decoded ) ? $decoded : []
-			);
-			throw $exception;
-		}
-
-		if ( ! is_array( $decoded ) ) {
-			throw VkApiException::invalidLongPollJson();
-		}
-
-		return $decoded;
+		return $this->unwrapLongPollResult( $result );
 	}
 
 	/**
@@ -184,62 +152,70 @@ class VkApi {
 	 * @throws VkApiException
 	 */
 	private function call( string $method, array $params = [] ) {
-		$response = wp_remote_post(
-			self::API_URL . ltrim( $method, '/' ),
-			[
-				'timeout' => 15,
-				'headers' => [
-					'Accept' => 'application/json',
-				],
-				'body' => array_filter(
-					array_merge(
-						$params,
-						[
-							'access_token' => $this->accessToken,
-							'v' => $this->apiVersion,
-						]
-					),
-					static function ( $value ): bool {
-						return null !== $value && '' !== $value;
-					}
-				),
-			]
-		);
+		$result = $this->gateway->api( $method, $params, $this->accessToken, $this->apiVersion );
 
-		if ( is_wp_error( $response ) ) {
-			$exception = VkApiException::fromWpError( $response );
-			throw $exception;
+		return $this->unwrapApiResult( $result );
+	}
+
+	private function createGateway(): VkGateway {
+		$gateway = new WordPressVkGateway();
+		$filteredGateway = apply_filters( 'cf7vk_vk_gateway', $gateway, $this->accessToken, $this->apiVersion, $this );
+
+		return $filteredGateway instanceof VkGateway ? $filteredGateway : $gateway;
+	}
+
+	/**
+	 * @throws VkApiException
+	 */
+	private function unwrapApiResult( VkDeliveryResult $result ) {
+		if ( $result->ok ) {
+			return $result->result;
 		}
 
-		$status_code = (int) wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-		$decoded = json_decode( $body, true );
-
-		if ( $status_code >= 400 ) {
-			$exception = VkApiException::apiRequestFailed(
-				$status_code,
-				is_array( $decoded ) ? $decoded : []
-			);
-			throw $exception;
+		if ( VkDeliveryResult::ERROR_TRANSPORT === $result->errorType ) {
+			throw VkApiException::fromWpError( new \WP_Error( 'cf7vk_vk_transport_error', $result->description ) );
 		}
 
-		if ( ! is_array( $decoded ) ) {
-			throw VkApiException::invalidApiJson();
+		if ( VkDeliveryResult::ERROR_HTTP === $result->errorType ) {
+			throw VkApiException::apiRequestFailed( $result->status, $this->resultPayload( $result ) );
 		}
 
-		if ( isset( $decoded['error'] ) ) {
-			$error = (array) $decoded['error'];
+		if ( VkDeliveryResult::ERROR_VK_API === $result->errorType ) {
+			$error = $this->resultPayload( $result );
+			$error['error_code'] = (int) ( $error['error_code'] ?? $result->errorCode );
+			$error['error_msg'] = (string) ( $error['error_msg'] ?? $result->description );
 
-			$exception = VkApiException::fromApiError( $error );
-			throw $exception;
+			throw VkApiException::fromApiError( $error );
 		}
 
-		if ( ! array_key_exists( 'response', $decoded ) ) {
-			$exception = VkApiException::missingResponsePayload( $decoded );
-			throw $exception;
+		if ( VkDeliveryResult::ERROR_MISSING_RESPONSE === $result->errorType ) {
+			throw VkApiException::missingResponsePayload( $this->resultPayload( $result ) );
 		}
 
-		return $decoded['response'];
+		throw VkApiException::invalidApiJson();
+	}
+
+	/**
+	 * @throws VkApiException
+	 */
+	private function unwrapLongPollResult( VkDeliveryResult $result ): array {
+		if ( $result->ok ) {
+			return is_array( $result->result ) ? $result->result : [];
+		}
+
+		if ( VkDeliveryResult::ERROR_TRANSPORT === $result->errorType ) {
+			throw VkApiException::fromWpError( new \WP_Error( 'cf7vk_vk_transport_error', $result->description ) );
+		}
+
+		if ( VkDeliveryResult::ERROR_HTTP === $result->errorType ) {
+			throw VkApiException::longPollRequestFailed( $result->status, $this->resultPayload( $result ) );
+		}
+
+		throw VkApiException::invalidLongPollJson();
+	}
+
+	private function resultPayload( VkDeliveryResult $result ): array {
+		return is_array( $result->result ) ? $result->result : [];
 	}
 
 	private function isSequentialArray( array $value ): bool {

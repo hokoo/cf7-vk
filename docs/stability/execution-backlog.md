@@ -30,6 +30,7 @@ Execution status as of 2026-08-31:
 - `T4`: completed; maintenance lifecycle, repair, retention, and slug-rename activation hardening are implemented and covered.
 - `T5`: completed; migration runner state, locks, retry, self-heal, and admin recovery guards are implemented and covered.
 - `T6`: completed; migration/lifecycle characterization, relation fixtures, damaged fixture repair evidence, and all published/tagged baselines are covered.
+- `T7`: completed; VK API and Long Poll HTTP calls are isolated behind a gateway contract, normalized delivery result, VK-aware redactor, and recording fake test harness.
 
 Completed first execution batch after approval:
 
@@ -38,7 +39,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T7. Introduce VK Gateway Contract And Recording Fake`
+- `T8. Add Central Redaction For Logs, Transport Errors, And Evidence`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -573,7 +574,7 @@ Notes/Risks:
 
 ## T7. Introduce VK Gateway Contract And Recording Fake
 
-Status: todo
+Status: completed
 
 Goal: isolate VK network behavior behind a narrow, testable gateway.
 
@@ -628,10 +629,29 @@ Dependencies:
 Notes/Risks:
 
 - VK API methods and Long Poll requests have different URL/body shapes. Keep the gateway explicit instead of creating one generic method that hides cursor/key risk.
+- Implemented files:
+  - `plugin-dir/lib/Vk/VkGateway.php`;
+  - `plugin-dir/lib/Vk/VkDeliveryResult.php`;
+  - `plugin-dir/lib/Vk/VkRedactor.php`;
+  - `plugin-dir/lib/Vk/WordPressVkGateway.php`;
+  - `plugin-dir/tests/Fakes/RecordingVkGateway.php`;
+  - `plugin-dir/tests/VkGatewayTest.php`;
+  - updates to `plugin-dir/lib/VkApi.php`, `plugin-dir/tests/VkApiTest.php`, and `plugin-dir/tests/bootstrap.php`.
+- Production behavior still uses the WordPress HTTP API through `WordPressVkGateway`; `VkApi` remains the backwards-compatible adapter that maps gateway failures back to existing `VkApiException` types.
+- Tests can replace the gateway through `cf7vk_vk_gateway` or constructor injection without intercepting global HTTP.
+- Long Poll protocol failures such as `failed=1` remain successful transport results so existing cursor handling in `Bot::fetchUpdates()` remains unchanged.
+- Verification evidence:
+  - `php -l` passed for all production and test PHP files under `plugin-dir/lib` and `plugin-dir/tests`.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 71 tests, 0 failures, 1 PHP 8.1 dependency-heavy skip.
+  - `git diff --check` passed.
+  - `./scripts/build-release-zip.sh` passed after T7.
+  - `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed after T7.
+  - Current candidate ZIP SHA-256 is `f2f154786cdb42cc8d52b3a246faa1dab1b5b7bc723c7f9541d99f13706ece90`; size is `253521` bytes.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T162159Z-51324.7eOyeT/results/summary.json`, 25 steps, 25 passed, 0 skipped, 0 failures.
 
 ## T8. Add Central Redaction For Logs, Transport Errors, And Evidence
 
-Status: waiting_dependency
+Status: todo
 
 Goal: prevent VK secrets and user-submitted private data from leaking into logs or test artifacts.
 

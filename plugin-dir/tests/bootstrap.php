@@ -866,6 +866,24 @@ if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_remote_retrieve_header' ) ) {
+	function wp_remote_retrieve_header( $response, string $header ) {
+		$headers = $response['headers'] ?? [];
+
+		if ( ! is_array( $headers ) ) {
+			return '';
+		}
+
+		foreach ( $headers as $name => $value ) {
+			if ( strtolower( (string) $name ) === strtolower( $header ) ) {
+				return is_array( $value ) ? reset( $value ) : $value;
+			}
+		}
+
+		return '';
+	}
+}
+
 if ( ! function_exists( 'wp_insert_post' ) ) {
 	function wp_insert_post( array $postarr, bool $wp_error = false ) {
 		$post = new WP_Post();

@@ -40,7 +40,8 @@ Implementation progress as of 2026-08-31:
 - `T4. Implement Maintenance Lifecycle, Repair, And Log Retention`: completed.
 - `T5. Harden Migration Runner State, Locks, And Recovery`: completed.
 - `T6. Add Migration And Lifecycle Characterization Evidence`: completed.
-- Next execution-ready task: `T7. Introduce VK Gateway Contract And Recording Fake`.
+- `T7. Introduce VK Gateway Contract And Recording Fake`: completed.
+- Next execution-ready task: `T8. Add Central Redaction For Logs, Transport Errors, And Evidence`.
 
 ## Reference Stability Scope
 
@@ -228,7 +229,8 @@ Recommended action:
 Status as of 2026-08-31:
 
 - partially mitigated by T4 for log retention and row cap;
-- redaction remains open and should be handled by T8 before transport/admin evidence expands.
+- partially mitigated by T7 for VK transport result descriptions and failure payloads;
+- central log and evidence redaction remains open and should be handled by T8 before admin/delivery evidence expands.
 
 ### F6. VK transport is direct and exception-driven
 
@@ -251,6 +253,13 @@ Recommended action:
 - keep the production gateway on WordPress HTTP API;
 - allow tests to inject a recording fake through a filter such as `cf7vk_vk_gateway`;
 - normalize `api`, `long_poll`, `http`, `transport`, and `malformed_response` failures.
+
+Status as of 2026-08-31:
+
+- mitigated by T7;
+- `VkApi` now delegates VK API and Long Poll HTTP to `WordPressVkGateway`;
+- failures are normalized through `VkDeliveryResult` and mapped back to the existing public `VkApiException` behavior;
+- transport tests pass through a recording fake and no longer require global HTTP interception.
 
 ### F7. Credential changes are not transactional
 
