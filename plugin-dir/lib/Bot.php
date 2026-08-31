@@ -34,6 +34,9 @@ class Bot extends Entity implements wpPostAble {
 	public const DEFAULT_AUTH_COMMAND = 'start';
 	public const EMPTY_SECRET_MASK = '[%s]';
 	public const LONG_POLL_WAIT = 25;
+	public const FETCH_UPDATES_LOCK_KEY_PATTERN = 'cf7vk_fetch_updates_lock_%d';
+	public const FETCH_UPDATES_LOCK_PREFIX = 'cf7vk_fetch_updates_lock_';
+	public const FETCH_UPDATES_LOCK_TTL = 60;
 	private ?VkApi $api = null;
 
 	/**
@@ -736,10 +739,10 @@ class Bot extends Entity implements wpPostAble {
 	}
 
 	private function getFetchUpdatesLockKey(): string {
-		return sprintf( 'cf7vk_fetch_updates_lock_%d', $this->getPost()->ID );
+		return sprintf( self::FETCH_UPDATES_LOCK_KEY_PATTERN, $this->getPost()->ID );
 	}
 
-	private function acquireFetchUpdatesLock( int $ttl = 60 ): bool {
+	private function acquireFetchUpdatesLock( int $ttl = self::FETCH_UPDATES_LOCK_TTL ): bool {
 		$lock_key = $this->getFetchUpdatesLockKey();
 		$locked_at = (int) get_option( $lock_key, 0 );
 		$now = time();

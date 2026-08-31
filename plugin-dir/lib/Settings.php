@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use iTRON\cf7Vk\Controllers\CPT;
+use iTRON\cf7Vk\Controllers\Migration;
 
 class Settings {
 	public const PAGE_SLUG = 'wpcf7_vk';
@@ -117,6 +118,7 @@ class Settings {
 				'forms' => get_rest_url( null, 'contact-form-7/v1/contact-forms/' ),
 			],
 			'nonce' => wp_create_nonce( 'wp_rest' ),
+			'migrationRecovery' => Migration::getAdminRecoveryState(),
 			'phrases' => [
 				'emptySecret' => Bot::getEmptySecret(),
 			],

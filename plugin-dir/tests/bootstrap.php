@@ -1,0 +1,1318 @@
+<?php
+
+declare( strict_types=1 );
+
+if ( ! defined( 'ABSPATH' ) ) {
+	define( 'ABSPATH', __DIR__ . '/fixtures/wordpress/' );
+}
+
+if ( ! defined( 'MINUTE_IN_SECONDS' ) ) {
+	define( 'MINUTE_IN_SECONDS', 60 );
+}
+
+if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
+	define( 'HOUR_IN_SECONDS', 3600 );
+}
+
+if ( ! defined( 'CF7VK_PLUGIN_NAME' ) ) {
+	define( 'CF7VK_PLUGIN_NAME', 'message-bridge-for-contact-form-7-and-vk/cf7-vk.php' );
+}
+
+if ( ! defined( 'CF7VK_VERSION' ) ) {
+	define( 'CF7VK_VERSION', '0.1.4' );
+}
+
+if ( ! defined( 'CF7VK_FILE' ) ) {
+	define( 'CF7VK_FILE', dirname( __DIR__ ) . '/cf7-vk.php' );
+}
+
+class Cf7vk_WpDie extends Exception {
+}
+
+if ( ! class_exists( 'WP_Error' ) ) {
+	class WP_Error {
+		private string $code;
+		private string $message;
+		private $data;
+
+		public function __construct( string $code = '', string $message = '', $data = null ) {
+			$this->code = $code;
+			$this->message = $message;
+			$this->data = $data;
+		}
+
+		public function get_error_code(): string {
+			return $this->code;
+		}
+
+		public function get_error_message(): string {
+			return $this->message;
+		}
+
+		public function get_error_data() {
+			return $this->data;
+		}
+	}
+}
+
+if ( ! class_exists( 'WP_Post' ) ) {
+	class WP_Post {
+		public int $ID = 0;
+		public string $post_type = '';
+		public string $post_status = 'publish';
+		public string $post_title = '';
+		public string $post_content = '';
+		public string $post_content_filtered = '';
+	}
+}
+
+if ( ! class_exists( 'WP_Query' ) ) {
+	class WP_Query {
+		public static array $last_args = [];
+		public array $posts = [];
+
+		public function __construct( array $args = [] ) {
+			self::$last_args = $args;
+
+			$post_type = (string) ( $args['post_type'] ?? '' );
+			$posts = $GLOBALS['wp_query_posts'][ $post_type ] ?? cf7vk_test_get_posts( $args, true );
+			$limit = $args['posts_per_page'] ?? 10;
+
+			$this->posts = -1 === $limit ? $posts : array_slice( $posts, 0, (int) $limit );
+		}
+
+		public function have_posts(): bool {
+			return ! empty( $this->posts );
+		}
+	}
+}
+
+if ( ! class_exists( 'WPCF7_ContactForm' ) ) {
+	class WPCF7_ContactForm {
+		public const post_type = 'wpcf7_contact_form';
+		private int $id;
+		private string $title;
+		private array $props;
+
+		public function __construct( int $id = 1, string $title = 'Contact form', array $props = [] ) {
+			$this->id = $id;
+			$this->title = $title;
+			$this->props = $props;
+		}
+
+		public function id(): int {
+			return $this->id;
+		}
+
+		public function title(): string {
+			return $this->title;
+		}
+
+		public function prop( string $name ) {
+			return $this->props[ $name ] ?? null;
+		}
+	}
+}
+
+if ( ! class_exists( 'WPCF7_Submission' ) ) {
+	class WPCF7_Submission {
+		private array $posted_data;
+
+		public function __construct( array $posted_data = [] ) {
+			$this->posted_data = $posted_data;
+		}
+
+		public function get_posted_data(): array {
+			return $this->posted_data;
+		}
+	}
+}
+
+if ( ! class_exists( 'wpdb' ) ) {
+	class wpdb {
+	}
+}
+
+class Cf7vk_Test_Wpdb extends wpdb {
+	public string $prefix = 'wp_';
+	public string $posts = 'wp_posts';
+	public string $options = 'wp_options';
+	public array $tables = [];
+	public int $rows_affected = 0;
+	public int $insert_id = 0;
+	public string $last_error = '';
+	private bool $suppress_errors = false;
+
+	public function has_cap( string $capability ): bool {
+		return false;
+	}
+
+	public function suppress_errors( $suppress = null ): bool {
+		$previous = $this->suppress_errors;
+
+		if ( null !== $suppress ) {
+			$this->suppress_errors = (bool) $suppress;
+		}
+
+		return $previous;
+	}
+
+	public function esc_like( string $text ): string {
+		return addcslashes( $text, '_%\\' );
+	}
+
+	public function insert( string $table, array $data, array $format = [] ): bool {
+		$this->last_error = '';
+		$this->rows_affected = 1;
+
+		$GLOBALS['wpdb_inserts'][] = [
+			'table'  => $table,
+			'data'   => $data,
+			'format' => $format,
+		];
+
+		if ( str_contains( $table, 'post_connections_meta_cf7_vk' ) ) {
+			$id = $GLOBALS['wp_next_connection_meta_id']++;
+			$GLOBALS['wp_connection_meta_rows'][] = (object) [
+				'meta_id'       => $id,
+				'connection_id' => (int) $data['connection_id'],
+				'meta_key'      => (string) ( $data['meta_key'] ?? '' ),
+				'meta_value'    => $data['meta_value'] ?? '',
+			];
+			$this->insert_id = $id;
+			return true;
+		}
+
+		if ( str_contains( $table, 'post_connections_cf7_vk' ) ) {
+			$id = $GLOBALS['wp_next_connection_id']++;
+			$GLOBALS['wp_connection_rows'][] = (object) [
+				'ID'       => $id,
+				'relation' => (string) $data['relation'],
+				'from'     => (int) $data['from'],
+				'to'       => (int) $data['to'],
+				'order'    => (int) ( $data['order'] ?? 0 ),
+				'title'    => (string) ( $data['title'] ?? '' ),
+			];
+			$this->insert_id = $id;
+			return true;
+		}
+
+		if ( $this->isLogTable( $table ) ) {
+			$id = $GLOBALS['wp_next_log_id']++;
+			$GLOBALS['wp_log_rows'][] = (object) [
+				'ID'     => $id,
+				'source' => (string) ( $data['source'] ?? '' ),
+				'date'   => (int) ( $data['date'] ?? 0 ),
+				'level'  => (int) ( $data['level'] ?? 0 ),
+				'msg'    => (string) ( $data['msg'] ?? '' ),
+				'data'   => (string) ( $data['data'] ?? '' ),
+			];
+			$this->insert_id = $id;
+			return true;
+		}
+
+		return true;
+	}
+
+	public function update( string $table, array $data, array $where ): bool {
+		$this->rows_affected = 0;
+
+		if ( ! str_contains( $table, 'post_connections_cf7_vk' ) || empty( $where['ID'] ) ) {
+			return false;
+		}
+
+		foreach ( $GLOBALS['wp_connection_rows'] as $row ) {
+			if ( (int) $row->ID !== (int) $where['ID'] ) {
+				continue;
+			}
+
+			foreach ( [ 'from', 'to', 'order' ] as $key ) {
+				if ( array_key_exists( $key, $data ) ) {
+					$row->$key = (int) $data[ $key ];
+				}
+			}
+
+			foreach ( [ 'relation', 'title' ] as $key ) {
+				if ( array_key_exists( $key, $data ) ) {
+					$row->$key = (string) $data[ $key ];
+				}
+			}
+
+			$this->rows_affected = 1;
+			return true;
+		}
+
+		return false;
+	}
+
+	public function prepare( string $query, ...$args ): string {
+		if ( 1 === count( $args ) && is_array( $args[0] ) ) {
+			$args = $args[0];
+		}
+
+		$prepared = (string) preg_replace_callback(
+			'/%[isd]/',
+			static function ( array $matches ) use ( &$args ): string {
+				$value = array_shift( $args );
+
+				if ( '%d' === $matches[0] ) {
+					return (string) (int) $value;
+				}
+
+				if ( '%i' === $matches[0] ) {
+					return '`' . str_replace( '`', '``', (string) $value ) . '`';
+				}
+
+				return "'" . str_replace( "'", "\\'", (string) $value ) . "'";
+			},
+			$query
+		);
+
+		return (string) preg_replace( "/''([^']*)''/", "'$1'", $prepared );
+	}
+
+	public function get_col( string $query ): array {
+		$GLOBALS['wpdb_queries'][] = $query;
+
+		if ( preg_match( "/SELECT option_name FROM `?wp_options`? WHERE option_name LIKE '([^']*)%'/", $query, $matches ) ) {
+			$prefix = str_replace( [ '\\_', '\\%' ], [ '_', '%' ], stripslashes( $matches[1] ) );
+
+			return array_values(
+				array_filter(
+					array_keys( $GLOBALS['wp_options'] ),
+					static fn( string $name ): bool => str_starts_with( $name, $prefix )
+				)
+			);
+		}
+
+		if ( preg_match( '/SELECT ID FROM `?([^`\s]+)`?/i', $query, $matches ) && $this->isConnectionsTable( $matches[1] ) ) {
+			return array_map(
+				static fn( object $row ): int => (int) $row->ID,
+				$this->filterConnectionRows( $query )
+			);
+		}
+
+		return [];
+	}
+
+	public function get_results( string $query ): array {
+		$GLOBALS['wpdb_queries'][] = $query;
+
+		if ( preg_match( '/FROM `?([^`\s]+)`?/i', $query, $matches ) && $this->isConnectionsTable( $matches[1] ) ) {
+			return $this->hydrateConnectionRows( $this->filterConnectionRows( $query ) );
+		}
+
+		return [];
+	}
+
+	public function get_var( string $query ) {
+		$GLOBALS['wpdb_queries'][] = $query;
+
+		if ( preg_match( "/SHOW TABLES LIKE '([^']+)'/", $query, $matches ) ) {
+			$table = stripslashes( $matches[1] );
+			return $this->tableExistsInMock( $table ) ? $table : null;
+		}
+
+		return null;
+	}
+
+	public function query( string $query ): int {
+		$GLOBALS['wpdb_queries'][] = $query;
+		$this->rows_affected = 0;
+
+		if ( preg_match( '/DELETE FROM `?([^`\s]+)`? WHERE `?date`? < (\d+)/i', $query, $matches ) && $this->isLogTable( $matches[1] ) ) {
+			$cutoff = (int) $matches[2];
+			$before = count( $GLOBALS['wp_log_rows'] );
+			$GLOBALS['wp_log_rows'] = array_values(
+				array_filter(
+					$GLOBALS['wp_log_rows'],
+					static fn( object $row ): bool => (int) $row->date >= $cutoff
+				)
+			);
+			$this->rows_affected = $before - count( $GLOBALS['wp_log_rows'] );
+			return $this->rows_affected;
+		}
+
+		if ( preg_match( '/DELETE FROM `?([^`\s]+)`? WHERE `?ID`? NOT IN .*LIMIT (\d+)/is', $query, $matches ) && $this->isLogTable( $matches[1] ) ) {
+			$limit = max( 1, (int) $matches[2] );
+			$rows = $GLOBALS['wp_log_rows'];
+			usort(
+				$rows,
+				static function ( object $left, object $right ): int {
+					$date_comparison = (int) $right->date <=> (int) $left->date;
+					return 0 !== $date_comparison ? $date_comparison : (int) $right->ID <=> (int) $left->ID;
+				}
+			);
+			$keep_ids = array_map(
+				static fn( object $row ): int => (int) $row->ID,
+				array_slice( $rows, 0, $limit )
+			);
+			$before = count( $GLOBALS['wp_log_rows'] );
+			$GLOBALS['wp_log_rows'] = array_values(
+				array_filter(
+					$GLOBALS['wp_log_rows'],
+					static fn( object $row ): bool => in_array( (int) $row->ID, $keep_ids, true )
+				)
+			);
+			$this->rows_affected = $before - count( $GLOBALS['wp_log_rows'] );
+			return $this->rows_affected;
+		}
+
+		if ( preg_match( '/DELETE FROM `?([^`\s]+)`? WHERE `?connection_id`? = (\d+)/i', $query, $matches ) && $this->isConnectionsMetaTable( $matches[1] ) ) {
+			$connection_id = (int) $matches[2];
+			$before = count( $GLOBALS['wp_connection_meta_rows'] );
+			$GLOBALS['wp_connection_meta_rows'] = array_values(
+				array_filter(
+					$GLOBALS['wp_connection_meta_rows'],
+					static fn( object $row ): bool => (int) $row->connection_id !== $connection_id
+				)
+			);
+			$this->rows_affected = $before - count( $GLOBALS['wp_connection_meta_rows'] );
+			return $this->rows_affected;
+		}
+
+		if ( preg_match( '/DELETE FROM `?([^`\s]+)`? WHERE `?connection_id`? IN \(([^)]*)\)/i', $query, $matches ) && $this->isConnectionsMetaTable( $matches[1] ) ) {
+			$ids = $this->parseIntegerList( $matches[2] );
+			$before = count( $GLOBALS['wp_connection_meta_rows'] );
+			$GLOBALS['wp_connection_meta_rows'] = array_values(
+				array_filter(
+					$GLOBALS['wp_connection_meta_rows'],
+					static fn( object $row ): bool => ! in_array( (int) $row->connection_id, $ids, true )
+				)
+			);
+			$this->rows_affected = $before - count( $GLOBALS['wp_connection_meta_rows'] );
+			return $this->rows_affected;
+		}
+
+		if ( preg_match( '/DELETE FROM `?([^`\s]+)`? WHERE `?ID`? IN \(([^)]*)\)/i', $query, $matches ) && $this->isConnectionsTable( $matches[1] ) ) {
+			$ids = $this->parseIntegerList( $matches[2] );
+			$before = count( $GLOBALS['wp_connection_rows'] );
+			$GLOBALS['wp_connection_rows'] = array_values(
+				array_filter(
+					$GLOBALS['wp_connection_rows'],
+					static fn( object $row ): bool => ! in_array( (int) $row->ID, $ids, true )
+				)
+			);
+			$this->rows_affected = $before - count( $GLOBALS['wp_connection_rows'] );
+			return $this->rows_affected;
+		}
+
+		if ( preg_match( '/DROP TABLE IF EXISTS `?([^`\s;]+)`?/', $query, $matches ) ) {
+			$table = $matches[1];
+			$bare_table = $this->stripPrefix( $table );
+			$this->tables = array_values(
+				array_filter(
+					$this->tables,
+					static fn( string $existing ): bool => $existing !== $table && $existing !== $bare_table
+				)
+			);
+
+			if ( $this->isConnectionsTable( $table ) ) {
+				$GLOBALS['wp_connection_rows'] = [];
+			}
+
+			if ( $this->isConnectionsMetaTable( $table ) ) {
+				$GLOBALS['wp_connection_meta_rows'] = [];
+			}
+
+			if ( $this->isLogTable( $table ) ) {
+				$GLOBALS['wp_log_rows'] = [];
+			}
+		}
+
+		if ( preg_match( '/CREATE TABLE IF NOT EXISTS `?([^`\s(]+)`?/', $query, $matches ) ) {
+			$table = $this->stripPrefix( trim( $matches[1], '`' ) );
+
+			if ( ! in_array( $table, $this->tables, true ) ) {
+				$this->tables[] = $table;
+			}
+		}
+
+		return 0;
+	}
+
+	private function filterConnectionRows( string $query ): array {
+		$relations = array_merge(
+			$this->extractStringInList( $query, 'relation' ),
+			$this->extractStringEquals( $query, 'c.relation' ),
+			$this->extractStringEquals( $query, 'relation' )
+		);
+		$from_ids = array_merge(
+			$this->extractIntegerInList( $query, '`from`' ),
+			$this->extractIntegerEquals( $query, 'c.from' ),
+			$this->extractIntegerEquals( $query, 'from' )
+		);
+		$to_ids = array_merge(
+			$this->extractIntegerInList( $query, '`to`' ),
+			$this->extractIntegerEquals( $query, 'c.to' ),
+			$this->extractIntegerEquals( $query, 'to' )
+		);
+		$uses_or = str_contains( $query, ' OR ' );
+
+		return array_values(
+			array_filter(
+				$GLOBALS['wp_connection_rows'],
+				static function ( object $row ) use ( $relations, $from_ids, $to_ids, $uses_or ): bool {
+					if ( ! empty( $relations ) && ! in_array( (string) $row->relation, $relations, true ) ) {
+						return false;
+					}
+
+					if ( empty( $from_ids ) && empty( $to_ids ) ) {
+						return true;
+					}
+
+					if ( $uses_or && ! empty( $from_ids ) && ! empty( $to_ids ) ) {
+						return in_array( (int) $row->from, $from_ids, true ) || in_array( (int) $row->to, $to_ids, true );
+					}
+
+					if ( ! empty( $from_ids ) && ! in_array( (int) $row->from, $from_ids, true ) ) {
+						return false;
+					}
+
+					if ( ! empty( $to_ids ) && ! in_array( (int) $row->to, $to_ids, true ) ) {
+						return false;
+					}
+
+					return true;
+				}
+			)
+		);
+	}
+
+	private function hydrateConnectionRows( array $connection_rows ): array {
+		$rows = [];
+
+		foreach ( $connection_rows as $connection ) {
+			$meta_rows = array_values(
+				array_filter(
+					$GLOBALS['wp_connection_meta_rows'],
+					static fn( object $meta ): bool => (int) $meta->connection_id === (int) $connection->ID
+				)
+			);
+
+			if ( empty( $meta_rows ) ) {
+				$row = clone $connection;
+				$row->meta_id = null;
+				$row->meta_key = null;
+				$row->meta_value = null;
+				$rows[] = $row;
+				continue;
+			}
+
+			foreach ( $meta_rows as $meta ) {
+				$row = clone $connection;
+				$row->meta_id = $meta->meta_id ?? null;
+				$row->meta_key = $meta->meta_key ?? null;
+				$row->meta_value = $meta->meta_value ?? null;
+				$rows[] = $row;
+			}
+		}
+
+		return $rows;
+	}
+
+	private function extractStringInList( string $query, string $column ): array {
+		$pattern = '/' . preg_quote( $column, '/' ) . '\s+IN\s+\(([^)]*)\)/i';
+
+		if ( ! preg_match( $pattern, $query, $matches ) ) {
+			return [];
+		}
+
+		return array_map(
+			static fn( string $value ): string => stripslashes( trim( $value, " \t\n\r\0\x0B'" ) ),
+			array_filter( array_map( 'trim', explode( ',', $matches[1] ) ), 'strlen' )
+		);
+	}
+
+	private function extractStringEquals( string $query, string $column ): array {
+		$pattern = '/' . preg_quote( $column, '/' ) . "\s*=\s*'([^']*)'/i";
+
+		if ( ! preg_match( $pattern, $query, $matches ) ) {
+			return [];
+		}
+
+		return [ stripslashes( $matches[1] ) ];
+	}
+
+	private function extractIntegerInList( string $query, string $column ): array {
+		$pattern = '/' . preg_quote( $column, '/' ) . '\s+IN\s+\(([^)]*)\)/i';
+
+		if ( ! preg_match( $pattern, $query, $matches ) ) {
+			return [];
+		}
+
+		return $this->parseIntegerList( $matches[1] );
+	}
+
+	private function extractIntegerEquals( string $query, string $column ): array {
+		$pattern = '/' . preg_quote( $column, '/' ) . '\s*=\s*(\d+)/i';
+
+		if ( ! preg_match( $pattern, $query, $matches ) ) {
+			return [];
+		}
+
+		return [ (int) $matches[1] ];
+	}
+
+	private function parseIntegerList( string $list ): array {
+		return array_map(
+			'intval',
+			array_filter( array_map( 'trim', explode( ',', $list ) ), 'strlen' )
+		);
+	}
+
+	private function isConnectionsTable( string $table ): bool {
+		return $table === $this->prefix . 'post_connections_cf7_vk';
+	}
+
+	private function isConnectionsMetaTable( string $table ): bool {
+		return $table === $this->prefix . 'post_connections_meta_cf7_vk';
+	}
+
+	private function isLogTable( string $table ): bool {
+		return $table === $this->prefix . 'cf7vk_log' || $table === 'cf7vk_log';
+	}
+
+	private function tableExistsInMock( string $table ): bool {
+		$bare_table = $this->stripPrefix( $table );
+
+		return in_array( $table, $this->tables, true ) || in_array( $bare_table, $this->tables, true );
+	}
+
+	private function stripPrefix( string $table ): string {
+		return str_starts_with( $table, $this->prefix ) ? substr( $table, strlen( $this->prefix ) ) : $table;
+	}
+}
+
+if ( ! function_exists( 'cf7vk_test_unique_callback_id' ) ) {
+	function cf7vk_test_unique_callback_id( $callback ): string {
+		if ( is_string( $callback ) ) {
+			return $callback;
+		}
+
+		if ( is_array( $callback ) ) {
+			$class = is_object( $callback[0] ) ? get_class( $callback[0] ) : (string) $callback[0];
+			return $class . '::' . (string) $callback[1];
+		}
+
+		if ( $callback instanceof Closure ) {
+			return spl_object_hash( $callback );
+		}
+
+		return md5( serialize( $callback ) );
+	}
+}
+
+if ( ! function_exists( 'add_filter' ) ) {
+	function add_filter( string $hook_name, $callback, int $priority = 10, int $accepted_args = 1 ): bool {
+		$id = cf7vk_test_unique_callback_id( $callback );
+		$GLOBALS['wp_filter'][ $hook_name ][ $priority ][ $id ] = [
+			'function' => $callback,
+			'accepted_args' => $accepted_args,
+		];
+
+		return true;
+	}
+}
+
+if ( ! function_exists( 'add_action' ) ) {
+	function add_action( string $hook_name, $callback, int $priority = 10, int $accepted_args = 1 ): bool {
+		return add_filter( $hook_name, $callback, $priority, $accepted_args );
+	}
+}
+
+if ( ! function_exists( 'apply_filters' ) ) {
+	function apply_filters( string $hook_name, $value, ...$args ) {
+		if ( empty( $GLOBALS['wp_filter'][ $hook_name ] ) ) {
+			return $value;
+		}
+
+		ksort( $GLOBALS['wp_filter'][ $hook_name ] );
+
+		foreach ( $GLOBALS['wp_filter'][ $hook_name ] as $callbacks ) {
+			foreach ( $callbacks as $callback ) {
+				$call_args = array_slice( array_merge( [ $value ], $args ), 0, $callback['accepted_args'] );
+				$value = call_user_func_array( $callback['function'], $call_args );
+			}
+		}
+
+		return $value;
+	}
+}
+
+if ( ! function_exists( 'do_action' ) ) {
+	function do_action( string $hook_name, ...$args ): void {
+		if ( empty( $GLOBALS['wp_filter'][ $hook_name ] ) ) {
+			return;
+		}
+
+		ksort( $GLOBALS['wp_filter'][ $hook_name ] );
+
+		foreach ( $GLOBALS['wp_filter'][ $hook_name ] as $callbacks ) {
+			foreach ( $callbacks as $callback ) {
+				$call_args = array_slice( $args, 0, $callback['accepted_args'] );
+				call_user_func_array( $callback['function'], $call_args );
+			}
+		}
+	}
+}
+
+if ( ! function_exists( '__' ) ) {
+	function __( string $text, string $domain = 'default' ): string {
+		return $text;
+	}
+}
+
+if ( ! function_exists( '_x' ) ) {
+	function _x( string $text, string $context, string $domain = 'default' ): string {
+		return $text;
+	}
+}
+
+if ( ! function_exists( 'esc_html__' ) ) {
+	function esc_html__( string $text, string $domain = 'default' ): string {
+		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'esc_html' ) ) {
+	function esc_html( string $text ): string {
+		return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+	}
+}
+
+if ( ! function_exists( 'wp_strip_all_tags' ) ) {
+	function wp_strip_all_tags( string $text, bool $remove_breaks = false ): string {
+		$text = strip_tags( $text );
+		return $remove_breaks ? ( preg_replace( '/[\r\n\t ]+/', ' ', $text ) ?? $text ) : $text;
+	}
+}
+
+if ( ! function_exists( 'wp_parse_args' ) ) {
+	function wp_parse_args( $args, array $defaults = [] ): array {
+		return array_merge( $defaults, (array) $args );
+	}
+}
+
+if ( ! function_exists( 'wp_json_encode' ) ) {
+	function wp_json_encode( $data, int $flags = 0, int $depth = 512 ): string {
+		return (string) json_encode( $data, $flags, $depth );
+	}
+}
+
+if ( ! function_exists( 'wp_die' ) ) {
+	function wp_die( $message = '', $title = '', $args = [] ): void {
+		$GLOBALS['wp_die_message'] = $message;
+		$GLOBALS['wp_die_title'] = $title;
+		$GLOBALS['wp_die_args'] = $args;
+
+		throw new Cf7vk_WpDie( is_scalar( $message ) ? (string) $message : wp_json_encode( $message ) );
+	}
+}
+
+if ( ! function_exists( 'current_user_can' ) ) {
+	function current_user_can( string $capability, ...$args ): bool {
+		$GLOBALS['current_user_can_checked'][] = [
+			'capability' => $capability,
+			'args'       => $args,
+		];
+
+		return (bool) ( $GLOBALS['current_user_can'] ?? true );
+	}
+}
+
+if ( ! function_exists( 'wp_create_nonce' ) ) {
+	function wp_create_nonce( string $action = '-1' ): string {
+		return 'nonce-' . $action;
+	}
+}
+
+if ( ! function_exists( 'check_admin_referer' ) ) {
+	function check_admin_referer( string $action = '-1', string $query_arg = '_wpnonce' ): int {
+		$nonce = (string) ( $_REQUEST[ $query_arg ] ?? '' );
+
+		if ( '' === $nonce || ! hash_equals( wp_create_nonce( $action ), $nonce ) ) {
+			wp_die( 'Invalid nonce.', '', [ 'response' => 403 ] );
+		}
+
+		$GLOBALS['checked_admin_referer'] = $action;
+		return 1;
+	}
+}
+
+if ( ! function_exists( 'wp_get_referer' ) ) {
+	function wp_get_referer() {
+		return $GLOBALS['wp_referer'] ?? false;
+	}
+}
+
+if ( ! function_exists( 'admin_url' ) ) {
+	function admin_url( string $path = '' ): string {
+		return 'https://example.test/wp-admin/' . ltrim( $path, '/' );
+	}
+}
+
+if ( ! function_exists( 'wp_safe_redirect' ) ) {
+	function wp_safe_redirect( string $location, int $status = 302, string $x_redirect_by = 'WordPress' ): bool {
+		$GLOBALS['wp_safe_redirect_location'] = $location;
+		$GLOBALS['wp_safe_redirect_status'] = $status;
+		$GLOBALS['wp_safe_redirect_by'] = $x_redirect_by;
+
+		return true;
+	}
+}
+
+if ( ! function_exists( 'is_wp_error' ) ) {
+	function is_wp_error( $thing ): bool {
+		return $thing instanceof WP_Error;
+	}
+}
+
+if ( ! function_exists( 'plugin_basename' ) ) {
+	function plugin_basename( string $file ): string {
+		return basename( dirname( $file ) ) . '/' . basename( $file );
+	}
+}
+
+if ( ! function_exists( 'trailingslashit' ) ) {
+	function trailingslashit( string $value ): string {
+		return rtrim( $value, '/\\' ) . '/';
+	}
+}
+
+if ( ! function_exists( 'untrailingslashit' ) ) {
+	function untrailingslashit( string $value ): string {
+		return rtrim( $value, '/\\' );
+	}
+}
+
+if ( ! function_exists( 'plugin_dir_path' ) ) {
+	function plugin_dir_path( string $file ): string {
+		return trailingslashit( dirname( $file ) );
+	}
+}
+
+if ( ! function_exists( 'add_query_arg' ) ) {
+	function add_query_arg( array $args, string $url ): string {
+		$separator = str_contains( $url, '?' ) ? '&' : '?';
+		return $url . $separator . http_build_query( $args, '', '&', PHP_QUERY_RFC3986 );
+	}
+}
+
+if ( ! function_exists( 'sanitize_title' ) ) {
+	function sanitize_title( string $title ): string {
+		$title = strtolower( $title );
+		$title = preg_replace( '/[^a-z0-9_\-]+/', '-', $title ) ?? $title;
+
+		return trim( $title, '-' );
+	}
+}
+
+if ( ! function_exists( 'sanitize_key' ) ) {
+	function sanitize_key( string $key ): string {
+		$key = strtolower( $key );
+
+		return preg_replace( '/[^a-z0-9_\-]/', '', $key ) ?? '';
+	}
+}
+
+if ( ! function_exists( 'wp_remote_post' ) ) {
+	function wp_remote_post( string $url, array $args = [] ) {
+		$GLOBALS['wp_remote_post_requests'][] = [
+			'url' => $url,
+			'args' => $args,
+		];
+
+		if ( is_callable( $GLOBALS['wp_remote_post_handler'] ?? null ) ) {
+			return call_user_func( $GLOBALS['wp_remote_post_handler'], $url, $args );
+		}
+
+		return [
+			'response' => [ 'code' => 200 ],
+			'headers' => [],
+			'body' => '{"response":true}',
+		];
+	}
+}
+
+if ( ! function_exists( 'wp_remote_get' ) ) {
+	function wp_remote_get( string $url, array $args = [] ) {
+		$GLOBALS['wp_remote_get_requests'][] = [
+			'url' => $url,
+			'args' => $args,
+		];
+
+		if ( is_callable( $GLOBALS['wp_remote_get_handler'] ?? null ) ) {
+			return call_user_func( $GLOBALS['wp_remote_get_handler'], $url, $args );
+		}
+
+		return [
+			'response' => [ 'code' => 200 ],
+			'headers' => [],
+			'body' => '{"ts":"2","updates":[]}',
+		];
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_response_code' ) ) {
+	function wp_remote_retrieve_response_code( $response ): int {
+		return (int) ( $response['response']['code'] ?? 0 );
+	}
+}
+
+if ( ! function_exists( 'wp_remote_retrieve_body' ) ) {
+	function wp_remote_retrieve_body( $response ): string {
+		return (string) ( $response['body'] ?? '' );
+	}
+}
+
+if ( ! function_exists( 'wp_insert_post' ) ) {
+	function wp_insert_post( array $postarr, bool $wp_error = false ) {
+		$post = new WP_Post();
+		$post->ID = ++$GLOBALS['wp_next_post_id'];
+		$post->post_type = (string) ( $postarr['post_type'] ?? 'post' );
+		$post->post_status = (string) ( $postarr['post_status'] ?? 'draft' );
+		$post->post_title = (string) ( $postarr['post_title'] ?? '' );
+		$post->post_content = (string) ( $postarr['post_content'] ?? '' );
+		$post->post_content_filtered = (string) ( $postarr['post_content_filtered'] ?? '' );
+		$GLOBALS['wp_posts'][ $post->ID ] = $post;
+		$GLOBALS['wp_posts_by_type'][ $post->post_type ][] = $post->ID;
+
+		return $post->ID;
+	}
+}
+
+if ( ! function_exists( 'get_post' ) ) {
+	function get_post( int $post_id ) {
+		return $GLOBALS['wp_posts'][ $post_id ] ?? null;
+	}
+}
+
+if ( ! function_exists( 'get_posts' ) ) {
+	function get_posts( array $args = [] ): array {
+		return cf7vk_test_get_posts( $args, false );
+	}
+}
+
+if ( ! function_exists( 'wp_update_post' ) ) {
+	function wp_update_post( array $postarr, bool $wp_error = false ) {
+		$id = (int) ( $postarr['ID'] ?? 0 );
+
+		if ( $id <= 0 || empty( $GLOBALS['wp_posts'][ $id ] ) ) {
+			return $wp_error ? new WP_Error( 'invalid_post', 'Invalid post ID.' ) : 0;
+		}
+
+		$old_type = $GLOBALS['wp_posts'][ $id ]->post_type;
+
+		foreach ( [ 'post_type', 'post_status', 'post_title', 'post_content', 'post_content_filtered' ] as $field ) {
+			if ( array_key_exists( $field, $postarr ) ) {
+				$GLOBALS['wp_posts'][ $id ]->$field = (string) $postarr[ $field ];
+			}
+		}
+
+		if ( $old_type !== $GLOBALS['wp_posts'][ $id ]->post_type ) {
+			$GLOBALS['wp_posts_by_type'][ $old_type ] = array_values(
+				array_diff( $GLOBALS['wp_posts_by_type'][ $old_type ] ?? [], [ $id ] )
+			);
+			$GLOBALS['wp_posts_by_type'][ $GLOBALS['wp_posts'][ $id ]->post_type ][] = $id;
+		}
+
+		return $id;
+	}
+}
+
+if ( ! function_exists( 'get_post_meta' ) ) {
+	function get_post_meta( int $post_id, string $key = '', bool $single = false ) {
+		return [];
+	}
+}
+
+if ( ! function_exists( 'maybe_unserialize' ) ) {
+	function maybe_unserialize( $value ) {
+		if ( ! is_string( $value ) ) {
+			return $value;
+		}
+
+		$result = @unserialize( $value );
+		return false === $result && 'b:0;' !== $value ? $value : $result;
+	}
+}
+
+if ( ! function_exists( 'get_option' ) ) {
+	function get_option( string $option, $default = false ) {
+		return array_key_exists( $option, $GLOBALS['wp_options'] ) ? $GLOBALS['wp_options'][ $option ] : $default;
+	}
+}
+
+if ( ! function_exists( 'update_option' ) ) {
+	function update_option( string $option, $value, $autoload = null ): bool {
+		$GLOBALS['wp_options'][ $option ] = $value;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'add_option' ) ) {
+	function add_option( string $option, $value = '', $deprecated = '', $autoload = 'yes' ): bool {
+		if ( array_key_exists( $option, $GLOBALS['wp_options'] ) ) {
+			return false;
+		}
+
+		$GLOBALS['wp_options'][ $option ] = $value;
+		return true;
+	}
+}
+
+if ( ! function_exists( 'delete_option' ) ) {
+	function delete_option( string $option ): bool {
+		$exists = array_key_exists( $option, $GLOBALS['wp_options'] );
+		unset( $GLOBALS['wp_options'][ $option ] );
+		return $exists;
+	}
+}
+
+if ( ! function_exists( 'wp_get_schedules' ) ) {
+	function wp_get_schedules(): array {
+		$schedules = [
+			'hourly'     => [
+				'interval' => HOUR_IN_SECONDS,
+				'display'  => 'Once Hourly',
+			],
+			'twicedaily' => [
+				'interval' => 12 * HOUR_IN_SECONDS,
+				'display'  => 'Twice Daily',
+			],
+			'daily'      => [
+				'interval' => 24 * HOUR_IN_SECONDS,
+				'display'  => 'Once Daily',
+			],
+		];
+
+		return apply_filters( 'cron_schedules', $schedules );
+	}
+}
+
+if ( ! function_exists( '_get_cron_array' ) ) {
+	function _get_cron_array(): array {
+		$cron = get_option( 'cron', [] );
+
+		if ( ! is_array( $cron ) ) {
+			return [];
+		}
+
+		unset( $cron['version'] );
+		ksort( $cron );
+
+		return $cron;
+	}
+}
+
+if ( ! function_exists( '_set_cron_array' ) ) {
+	function _set_cron_array( array $cron, bool $wp_error = false ) {
+		$cron['version'] = 2;
+		update_option( 'cron', $cron, true );
+		return true;
+	}
+}
+
+if ( ! function_exists( 'wp_schedule_single_event' ) ) {
+	function wp_schedule_single_event( $timestamp, string $hook, array $args = [], bool $wp_error = false ) {
+		if ( ! is_numeric( $timestamp ) || $timestamp <= 0 ) {
+			return $wp_error ? new WP_Error( 'invalid_timestamp', 'Event timestamp must be valid.' ) : false;
+		}
+
+		$timestamp = (int) $timestamp;
+		$key = md5( serialize( $args ) );
+		$crons = _get_cron_array();
+		$event = (object) [
+			'hook'      => $hook,
+			'timestamp' => $timestamp,
+			'schedule'  => false,
+			'args'      => $args,
+		];
+		$pre = apply_filters( 'pre_schedule_event', null, $event, $wp_error );
+
+		if ( null !== $pre ) {
+			return $pre;
+		}
+
+		$min_timestamp = $timestamp < time() + 10 * MINUTE_IN_SECONDS ? 0 : $timestamp - 10 * MINUTE_IN_SECONDS;
+		$max_timestamp = $timestamp < time() ? time() + 10 * MINUTE_IN_SECONDS : $timestamp + 10 * MINUTE_IN_SECONDS;
+
+		foreach ( $crons as $event_timestamp => $cron ) {
+			if ( $event_timestamp < $min_timestamp ) {
+				continue;
+			}
+
+			if ( $event_timestamp > $max_timestamp ) {
+				break;
+			}
+
+			if ( isset( $cron[ $hook ][ $key ] ) ) {
+				return $wp_error ? new WP_Error( 'duplicate_event', 'A duplicate event already exists.' ) : false;
+			}
+		}
+
+		$crons[ $timestamp ][ $hook ][ $key ] = [
+			'schedule' => false,
+			'args'     => $args,
+		];
+		ksort( $crons );
+
+		return _set_cron_array( $crons, $wp_error );
+	}
+}
+
+if ( ! function_exists( 'wp_schedule_event' ) ) {
+	function wp_schedule_event( $timestamp, string $recurrence, string $hook, array $args = [], bool $wp_error = false ) {
+		if ( ! is_numeric( $timestamp ) || $timestamp <= 0 ) {
+			return $wp_error ? new WP_Error( 'invalid_timestamp', 'Event timestamp must be valid.' ) : false;
+		}
+
+		$schedules = wp_get_schedules();
+
+		if ( ! isset( $schedules[ $recurrence ] ) ) {
+			$error = new WP_Error( 'invalid_schedule', 'Event schedule does not exist.' );
+			$GLOBALS['wp_schedule_errors'][] = $error;
+			return $wp_error ? $error : false;
+		}
+
+		$timestamp = (int) $timestamp;
+		$key = md5( serialize( $args ) );
+		$crons = _get_cron_array();
+		$event = (object) [
+			'hook'      => $hook,
+			'timestamp' => $timestamp,
+			'schedule'  => $recurrence,
+			'args'      => $args,
+			'interval'  => $schedules[ $recurrence ]['interval'],
+		];
+		$pre = apply_filters( 'pre_schedule_event', null, $event, $wp_error );
+
+		if ( null !== $pre ) {
+			if ( is_wp_error( $pre ) ) {
+				$GLOBALS['wp_schedule_errors'][] = $pre;
+			}
+
+			return $pre;
+		}
+
+		$crons[ $timestamp ][ $hook ][ $key ] = [
+			'schedule' => $recurrence,
+			'args'     => $args,
+			'interval' => $schedules[ $recurrence ]['interval'],
+		];
+		ksort( $crons );
+
+		return _set_cron_array( $crons, $wp_error );
+	}
+}
+
+if ( ! function_exists( 'wp_get_scheduled_event' ) ) {
+	function wp_get_scheduled_event( string $hook, array $args = [], $timestamp = null ) {
+		$crons = _get_cron_array();
+		$key = md5( serialize( $args ) );
+
+		if ( null === $timestamp ) {
+			foreach ( $crons as $event_timestamp => $cron ) {
+				if ( isset( $cron[ $hook ][ $key ] ) ) {
+					$timestamp = $event_timestamp;
+					break;
+				}
+			}
+		}
+
+		if ( null === $timestamp || ! isset( $crons[ $timestamp ][ $hook ][ $key ] ) ) {
+			return false;
+		}
+
+		$event = (object) [
+			'hook'      => $hook,
+			'timestamp' => (int) $timestamp,
+			'schedule'  => $crons[ $timestamp ][ $hook ][ $key ]['schedule'],
+			'args'      => $args,
+		];
+
+		if ( isset( $crons[ $timestamp ][ $hook ][ $key ]['interval'] ) ) {
+			$event->interval = $crons[ $timestamp ][ $hook ][ $key ]['interval'];
+		}
+
+		return $event;
+	}
+}
+
+if ( ! function_exists( 'wp_next_scheduled' ) ) {
+	function wp_next_scheduled( string $hook, array $args = [] ) {
+		$event = wp_get_scheduled_event( $hook, $args );
+		return $event ? $event->timestamp : false;
+	}
+}
+
+if ( ! function_exists( 'wp_clear_scheduled_hook' ) ) {
+	function wp_clear_scheduled_hook( string $hook, array $args = [] ): int {
+		$crons = _get_cron_array();
+		$key = md5( serialize( $args ) );
+		$removed = 0;
+
+		foreach ( $crons as $timestamp => $cron ) {
+			if ( ! isset( $cron[ $hook ][ $key ] ) ) {
+				continue;
+			}
+
+			unset( $crons[ $timestamp ][ $hook ][ $key ] );
+			$removed++;
+
+			if ( empty( $crons[ $timestamp ][ $hook ] ) ) {
+				unset( $crons[ $timestamp ][ $hook ] );
+			}
+
+			if ( empty( $crons[ $timestamp ] ) ) {
+				unset( $crons[ $timestamp ] );
+			}
+		}
+
+		_set_cron_array( $crons );
+
+		return $removed;
+	}
+}
+
+if ( ! function_exists( 'wp_delete_post' ) ) {
+	function wp_delete_post( int $post_id, bool $force_delete = false ) {
+		$post = $GLOBALS['wp_posts'][ $post_id ] ?? null;
+
+		if ( $post instanceof WP_Post ) {
+			do_action( 'before_delete_post', $post_id, $post );
+		}
+
+		$GLOBALS['wp_deleted_posts'][] = $post_id;
+		foreach ( $GLOBALS['wp_posts_by_type'] as &$post_ids ) {
+			$post_ids = array_values( array_diff( $post_ids, [ $post_id ] ) );
+		}
+		unset( $post_ids );
+		unset( $GLOBALS['wp_posts'][ $post_id ] );
+
+		return $post ?: true;
+	}
+}
+
+if ( ! function_exists( 'cf7vk_test_get_posts' ) ) {
+	function cf7vk_test_get_posts( array $args, bool $ids_only ): array {
+		$post_type = $args['post_type'] ?? null;
+		$post_status = $args['post_status'] ?? 'publish';
+		$posts = array_values( $GLOBALS['wp_posts'] ?? [] );
+
+		$posts = array_values(
+			array_filter(
+				$posts,
+				static function ( WP_Post $post ) use ( $post_type, $post_status ): bool {
+					if ( null !== $post_type && $post->post_type !== $post_type ) {
+						return false;
+					}
+
+					return 'any' === $post_status || $post->post_status === $post_status;
+				}
+			)
+		);
+
+		if ( -1 !== ( $args['posts_per_page'] ?? -1 ) ) {
+			$posts = array_slice( $posts, 0, (int) $args['posts_per_page'] );
+		}
+
+		return $ids_only || 'ids' === ( $args['fields'] ?? '' )
+			? array_map( static fn( WP_Post $post ): int => $post->ID, $posts )
+			: $posts;
+	}
+}
+
+if ( ! function_exists( 'cf7vk_test_cron_events' ) ) {
+	function cf7vk_test_cron_events( string $hook ): array {
+		$events = [];
+
+		foreach ( _get_cron_array() as $timestamp => $cron ) {
+			if ( ! isset( $cron[ $hook ] ) ) {
+				continue;
+			}
+
+			foreach ( $cron[ $hook ] as $event_key => $event ) {
+				$events[] = array_merge(
+					[
+						'timestamp' => (int) $timestamp,
+						'event_key' => (string) $event_key,
+					],
+					$event
+				);
+			}
+		}
+
+		return $events;
+	}
+}
+
+spl_autoload_register(
+	static function ( string $class ): void {
+		$prefixes = [
+			'iTRON\\cf7Vk\\' => dirname( __DIR__ ) . '/lib/',
+			'iTRON\\wpConnections\\' => dirname( __DIR__ ) . '/vendor/hokoo/wpconnections/src/',
+			'iTRON\\wpPostAble\\' => dirname( __DIR__ ) . '/vendor/hokoo/wppostable/src/',
+			'Ramsey\\Collection\\' => dirname( __DIR__ ) . '/vendor/ramsey/collection/src/',
+			'Psr\\Log\\' => dirname( __DIR__ ) . '/vendor/psr/log/src/',
+		];
+
+		foreach ( $prefixes as $prefix => $base_dir ) {
+			if ( 0 !== strpos( $class, $prefix ) ) {
+				continue;
+			}
+
+			$relative = substr( $class, strlen( $prefix ) );
+			$file = $base_dir . str_replace( '\\', '/', $relative ) . '.php';
+
+			if ( is_file( $file ) ) {
+				require_once $file;
+			}
+
+			return;
+		}
+	}
+);
+
+function cf7vk_test_reset_environment(): void {
+	$GLOBALS['wp_filter'] = [];
+	$GLOBALS['wp_options'] = [];
+	$GLOBALS['wp_posts'] = [];
+	$GLOBALS['wp_posts_by_type'] = [];
+	$GLOBALS['wp_query_posts'] = [];
+	$GLOBALS['wp_post_meta'] = [];
+	$GLOBALS['wp_deleted_posts'] = [];
+	$GLOBALS['wp_connection_rows'] = [];
+	$GLOBALS['wp_connection_meta_rows'] = [];
+	$GLOBALS['wp_log_rows'] = [];
+	$GLOBALS['wp_remote_post_requests'] = [];
+	$GLOBALS['wp_remote_get_requests'] = [];
+	$GLOBALS['wpdb_inserts'] = [];
+	$GLOBALS['wpdb_queries'] = [];
+	$GLOBALS['wp_schedule_errors'] = [];
+	$GLOBALS['current_user_can'] = true;
+	$GLOBALS['current_user_can_checked'] = [];
+	$GLOBALS['checked_admin_referer'] = null;
+	$GLOBALS['wp_safe_redirect_location'] = null;
+	$GLOBALS['wp_safe_redirect_status'] = null;
+	$GLOBALS['wp_safe_redirect_by'] = null;
+	$GLOBALS['wp_referer'] = false;
+	$GLOBALS['wp_die_message'] = null;
+	$GLOBALS['wp_die_title'] = null;
+	$GLOBALS['wp_die_args'] = null;
+	$GLOBALS['wp_next_post_id'] = 0;
+	$GLOBALS['wp_next_connection_id'] = 1;
+	$GLOBALS['wp_next_connection_meta_id'] = 1;
+	$GLOBALS['wp_next_log_id'] = 1;
+	$GLOBALS['wpdb'] = new Cf7vk_Test_Wpdb();
+	$_REQUEST = [];
+
+	if ( class_exists( 'WP_Query' ) ) {
+		WP_Query::$last_args = [];
+	}
+}
+
+cf7vk_test_reset_environment();
+
+require_once __DIR__ . '/TestCase.php';
