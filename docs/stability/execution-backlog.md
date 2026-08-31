@@ -34,7 +34,7 @@ Execution status as of 2026-08-31:
 - `T8`: completed; `Logger::write()` centrally redacts sensitive keys, VK tokens, Long Poll keys, emails, phones, and custom filter patterns before hook dispatch and database storage.
 - `T9`: completed; credential updates now validate candidate group/token/API version through the VK gateway before persistence and reset bot-owned relations only after validated community identity changes.
 - `T10`: completed; Long Poll fetch now coordinates with maintenance/fetch locks, returns structured transient errors, preserves `failed=1/2/3` semantics, and does not advance `longPollTs` after non-ignorable per-update processing failures.
-- `T11`: todo; unblocked by completed `T7` and `T8`.
+- `T11`: completed; CF7 delivery now returns per-channel/per-recipient structured results, continues later active chats after one VK failure, keeps CF7 success independent from VK transport failure, and emits sanitized `cf7vk_deliveries_completed` summaries.
 - `T12`: todo; unblocked by completed `S0` and installable React dependencies.
 
 Completed first execution batch after approval:
@@ -44,7 +44,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T11. Normalize CF7 Delivery Results And Per-Recipient Failure Handling`
+- `T12. Harden REST API And React API Client`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -873,7 +873,7 @@ Notes/Risks:
 
 ## T11. Normalize CF7 Delivery Results And Per-Recipient Failure Handling
 
-Status: todo
+Status: completed
 
 Goal: make CF7-to-VK delivery observable, resilient across recipients, and independent from CF7 form success.
 
@@ -923,6 +923,17 @@ Dependencies:
 Notes/Risks:
 
 - VK message size and formatting limits should be verified before adding Telegram-style chunking. Do not assume Telegram's 4096-character rule applies.
+- `cf7vk_deliveries_completed` intentionally receives sanitized delivery summary data only; existing hooks still expose their historical richer objects/context for backward compatibility.
+- `Channel::getBot()` now handles Ramsey's empty-collection exception as the real no-bot state instead of letting a channel without a bot abort delivery.
+- Verification evidence:
+  - `php -l` passed for changed backend/test PHP files.
+  - `docker run --rm -v "$PWD/plugin-dir":/app -w /app php:8.3-cli php tests/run.php` passed: 100 tests, 448 assertions. PHP 8.3 deprecation notices are emitted by the test doubles/vendor dynamic properties but do not fail the suite.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 100 tests, 0 failures, 10 PHP 8.1 dependency-heavy skips.
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 3 suites, 7 tests.
+  - `./scripts/build-release-zip.sh` and `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed.
+  - Current candidate ZIP SHA-256 is `801886989bc32a7652ce00393708edae67c55a23ff634ee8b5422c6e4139fc0e`; size is `259130` bytes.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T171215Z-74650.9dOEGZ/results/summary.json`, 26 steps, 26 passed, 0 skipped, 0 failures.
+  - `tests/stability/e1-smoke-matrix.sh` passed: summary `/tmp/cf7vk-e1-20260831T171312Z-77346.axvHIe/results/summary.json`, 166 steps, 166 passed, 0 skipped, 0 failures.
 
 ## T12. Harden REST API And React API Client
 

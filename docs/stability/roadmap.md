@@ -44,7 +44,8 @@ Implementation progress as of 2026-08-31:
 - `T8. Add Central Redaction For Logs, Transport Errors, And Evidence`: completed.
 - `T9. Add Transactional VK Credential Update Contract`: completed.
 - `T10. Harden VK Long Poll Cursor, Locks, And Update Processing`: completed.
-- Next execution-ready task: `T11. Normalize CF7 Delivery Results And Per-Recipient Failure Handling`.
+- `T11. Normalize CF7 Delivery Results And Per-Recipient Failure Handling`: completed.
+- Next execution-ready task: `T12. Harden REST API And React API Client`.
 
 ## Reference Stability Scope
 
@@ -262,7 +263,8 @@ Status as of 2026-08-31:
 - mitigated by T7;
 - `VkApi` now delegates VK API and Long Poll HTTP to `WordPressVkGateway`;
 - failures are normalized through `VkDeliveryResult` and mapped back to the existing public `VkApiException` behavior;
-- transport tests pass through a recording fake and no longer require global HTTP interception.
+- transport tests pass through a recording fake and no longer require global HTTP interception;
+- delivery continuity is additionally mitigated by T11: channel sendout returns per-recipient results, continues later active chats after one recipient fails, and emits sanitized completion summaries through `cf7vk_deliveries_completed`.
 
 ### F7. Credential changes are not transactional
 

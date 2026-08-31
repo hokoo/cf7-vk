@@ -47,4 +47,36 @@ final class MessageFormatterTest extends Cf7vk_TestCase {
 
 		$this->assertSame( "Message:\nPlain body", $message );
 	}
+
+	public function testFormatForVkNormalizesMultilineHtmlArraysAndPrivateFields(): void {
+		$form = new WPCF7_ContactForm( 10, 'Support form' );
+		$submission = new WPCF7_Submission(
+			[
+				'your-message' => "Line one\nLine two",
+				'tags' => [ '<b>alpha</b>', 'beta' ],
+				'empty-array' => [],
+				'empty-string' => '',
+				'_private-token' => 'do-not-include',
+			]
+		);
+
+		$message = MessageFormatter::formatForVk(
+			"<div>First line</div><div><strong>Second</strong> line</div>",
+			$form,
+			$submission,
+			[
+				'use_html' => true,
+				'subject' => 'Support <em>request</em>',
+			]
+		);
+
+		$this->assertStringContainsString( 'Subject: Support request', $message );
+		$this->assertStringContainsString( 'Message: Line one Line two', $message );
+		$this->assertStringContainsString( 'Tags: alpha, beta', $message );
+		$this->assertStringContainsString( "Message:\nFirst line\nSecond line", $message );
+		$this->assertStringNotContainsString( 'empty-array', $message );
+		$this->assertStringNotContainsString( 'empty-string', $message );
+		$this->assertStringNotContainsString( '_private-token', $message );
+		$this->assertStringNotContainsString( '<strong>', $message );
+	}
 }

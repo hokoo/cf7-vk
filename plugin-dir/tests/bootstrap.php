@@ -297,6 +297,12 @@ if ( ! class_exists( 'WPCF7_Submission' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wpcf7_mail_replace_tags' ) ) {
+	function wpcf7_mail_replace_tags( string $content ): string {
+		return $content;
+	}
+}
+
 if ( ! class_exists( 'wpdb' ) ) {
 	class wpdb {
 	}
