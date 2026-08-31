@@ -51,7 +51,8 @@ Implementation progress as of 2026-08-31:
 - `T15. Scope Admin Styles And Notice Policy`: completed.
 - `T16. Migrate React Build To WordPress Scripts`: completed.
 - `T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate`: completed.
-- Next execution-ready task: `T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke`.
+- `T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke`: completed.
+- Next execution-ready task: `T19. Add Fake VK Form Delivery And Admin Setup E2E`.
 
 ## Reference Stability Scope
 
@@ -359,7 +360,7 @@ Status as of 2026-08-31:
 - `App` now uses independent resource state and `Promise.allSettled`, keeps loaded sections visible across unrelated failures, shows targeted resource errors, retries only failed resources, disables dependency-gated controls, and wraps the settings screen in `SettingsErrorBoundary`;
 - T14 added focused component tests, mutation failure guards, stable browser selectors, channel removal relation cleanup evidence, failed-save snapshot preservation, and polling transient-error cleanup;
 - T15 scoped admin menu/background/notice CSS to the plugin page, preserved `cf7vk-notice`, and removed the duplicate server-side `cf7-vk-container` root;
-- build-chain migration and real browser smoke remain open for T16/T18.
+- build-chain migration and real browser smoke are mitigated by T16 and T18.
 
 ### F10. CF7 forms are not paginated in the admin API client
 
@@ -382,7 +383,7 @@ Status as of 2026-08-31:
 
 - mitigated at the React API-client layer by T12;
 - `fetchForms()` now uses `per_page=100` plus `offset`, keeps loading while pages are full, deduplicates repeated IDs, and fails closed if a page request rejects;
-- real WordPress smoke with more-than-default form visibility remains part of T18 browser/admin evidence.
+- T18 real WordPress smoke proves more-than-default form visibility through REST/admin/browser evidence.
 
 ### F11. Delete URL construction is unsafe for non-pretty REST URLs
 

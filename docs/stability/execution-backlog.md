@@ -41,7 +41,8 @@ Execution status as of 2026-08-31:
 - `T15`: completed; admin styles are page-scoped, plugin-owned notices are preserved, and duplicate server-side React roots are removed.
 - `T16`: completed; React build/test tooling now uses `@wordpress/scripts`, emits `main.asset.php`, and PHP enqueues asset dependencies/version from that metadata.
 - `T17`: completed; release workflow, release audits, Plugin Check, release ZIP negative tests, and support matrix wrapper are implemented.
-- `T18`: todo; unblocked by completed `T17`.
+- `T18`: completed; real WordPress REST/admin smoke and Playwright browser lifecycle smoke are implemented and passing locally.
+- `T19`: todo; unblocked by completed `T18`.
 
 Completed first execution batch after approval:
 
@@ -50,7 +51,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke`
+- `T19. Add Fake VK Form Delivery And Admin Setup E2E`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -1410,7 +1411,7 @@ Notes/Risks:
 
 ## T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke
 
-Status: todo
+Status: completed
 
 Goal: verify admin behavior against a real isolated WordPress install before the fake VK delivery E2E is added.
 
@@ -1463,10 +1464,40 @@ Dependencies:
 Notes/Risks:
 
 - Use isolated Docker workdirs and random web ports. Do not reuse the development WordPress containers or volumes.
+- Implemented files:
+  - `tests/stability/e4-rest-ui-smoke.sh`;
+  - `tests/stability/wp-e4-rest-ui-smoke.php`;
+  - `tests/stability/e5-browser-smoke.sh`;
+  - `tests/stability/wp-e5-browser-fixture.php`;
+  - `tests/e2e/playwright.config.js`;
+  - `tests/e2e/e5-browser-smoke.spec.js`;
+  - direct `@playwright/test` dev dependency in `plugin-dir/react/package.json`.
+- E4 REST/admin smoke installs the candidate ZIP in an isolated WordPress/CF7 Docker site, seeds 12 bots, 12 chats, 12 channels, and 12 CF7 forms through candidate runtime classes, replaces live VK transport with `cf7vk_vk_gateway`, and verifies:
+  - candidate and CF7 activation;
+  - VK bot/chat/channel REST route registration;
+  - POST-only bot action routes for `ping`, `fetch_updates`, `credentials`, and chat activation;
+  - VK bot schema fields;
+  - pagination beyond the first ten records for bots, chats, channels, and CF7 forms;
+  - protected POST mutation success for fake VK ping, fetch updates, and credential validation;
+  - subscriber capability rejection;
+  - admin mount root, built JS/CSS enqueue, localized `cf7vkData`, full-page CSS, and notice policy.
+- E5 browser smoke installs the current support row in an isolated Docker site, uses the candidate ZIP, seeds the same >10 data set plus a mu-plugin fake VK gateway/control plane, and runs Playwright against the real WordPress admin page.
+- Browser required checks are fail-closed in `write_summary()` and `writeResult()`: missing `authenticated-admin-render`, `no-page-errors`, `no-console-errors`, `full-page-background`, `system-notices-hidden`, `pagination-beyond-ten`, or `post-mutation-observed` entries are normalized as failures.
+- Verification evidence:
+  - `bash -n tests/stability/e4-rest-ui-smoke.sh && bash -n tests/stability/e5-browser-smoke.sh && php -l tests/stability/wp-e4-rest-ui-smoke.php && php -l tests/stability/wp-e5-browser-fixture.php && node -c tests/e2e/e5-browser-smoke.spec.js && node -c tests/e2e/playwright.config.js` passed.
+  - `./scripts/build-release-zip.sh` passed and validated the release ZIP.
+  - Current candidate ZIP SHA-256 is `dd7b87b80ee2e60680f99a6ec6cd58e490145615e129cc724664d7fa98dbc1b8`; size is `218908` bytes.
+  - `tests/stability/e4-rest-ui-smoke.sh` passed: summary `/tmp/cf7vk-e4-smoke-20260831T193622Z-21610.rCJGlo/results/summary.json`, 28 smoke checks passed, 0 failed, seeded 12 bots / 12 chats / 12 channels / 12 forms.
+  - E4 pagination evidence confirmed bots, chats, and channels page 1 count 10 and page 2 count 2; CF7 forms page 1 count 10 and page 2 count 3.
+  - E4 mutation evidence confirmed POST `/ping`, POST `/fetch_updates`, and POST `/credentials` through the fake VK gateway.
+  - `tests/stability/e5-browser-smoke.sh --skip-browser-install` passed: summary `/tmp/cf7vk-e5-browser-20260831T193734Z-23941.sQkOPR/results/summary.json`, 27 passed steps, 0 failed.
+  - E5 browser checks all passed: authenticated render/reactivation, no page errors, no unexpected console errors, full-page background for `body`, `#wpwrap`, `#wpcontent`, `#wpbody`, `#wpbody-content`, and `#cf7-vk-admin-page`, system notice hidden with plugin notice visible, pagination beyond ten, and POST mutation observation with `X-WP-Nonce`.
+  - E5 browser REST evidence loaded forms count 13, bots/chats/channels count 12 each, and observed protected POST `/wp/v2/cf7vk_bot/{id}/ping` and `/fetch_updates` requests from the real admin screen.
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 10 suites, 48 tests.
 
 ## T19. Add Fake VK Form Delivery And Admin Setup E2E
 
-Status: waiting_dependency
+Status: todo
 
 Goal: prove a real public CF7 form submission produces expected VK delivery attempts through deterministic fake VK transport, and prove the admin setup graph behind it.
 
