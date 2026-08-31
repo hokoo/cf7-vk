@@ -12,8 +12,6 @@ const NewBot = ({onCreated}) => {
         try {
             const createdBot = await apiCreateBot({
                 title: wp.i18n.__( 'VK Bot', 'message-bridge-for-contact-form-7-and-vk' ),
-                groupId: '',
-                accessToken: '',
                 authCommand: 'start'
             });
             onCreated(createdBot);

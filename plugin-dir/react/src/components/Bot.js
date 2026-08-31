@@ -9,6 +9,7 @@ import {
     apiFetchUpdates,
     apiPingBot,
     apiSaveBot,
+    apiSaveBotCredentials,
     apiSetBotChatStatus
 } from '../utils/api';
 
@@ -88,6 +89,7 @@ const Bot = ({
     refreshBots,
     refreshBotRuntime,
     refreshBotChatConnections,
+    refreshBotChannelConnections,
     refreshChatChannelConnections
 }) => {
     const persistedGroupId = bot.groupId || '';
@@ -352,6 +354,7 @@ const Bot = ({
 
         const previousForm = cloneForm(lastSavedFormRef.current);
         const connectionSettingsChanged = didConnectionSettingsChange(previousForm, nextForm);
+        const attemptedSnapshot = nextSnapshot;
 
         isSavingRef.current = true;
         setSaving(true);
@@ -361,15 +364,30 @@ const Bot = ({
         }
 
         try {
-            const savedBot = await apiSaveBot(bot.id, nextForm);
+            let credentialResult = null;
+            const savedBot = connectionSettingsChanged
+                ? (
+                    (credentialResult = await apiSaveBotCredentials(bot.id, nextForm))?.bot ||
+                    credentialResult
+                )
+                : await apiSaveBot(bot.id, nextForm);
 
             lastSavedFormRef.current = nextForm;
             lastSavedSnapshotRef.current = nextSnapshot;
             onBotSaved(savedBot);
 
             if (connectionSettingsChanged) {
+                if (credentialResult?.identityChanged || credentialResult?.relationsReset) {
+                    await Promise.all([
+                        refreshBotChatConnections(),
+                        refreshBotChannelConnections?.()
+                    ]);
+                }
+
                 if (hasConfiguredConnection(savedBot, nextForm)) {
-                    await runPing();
+                    setFeedback(null);
+                    setPollingEnabled(Boolean(credentialResult?.longPollReady));
+                    await refreshBots();
                 } else {
                     setFeedback(null);
                     await refreshBots();
@@ -384,7 +402,8 @@ const Bot = ({
             isSavingRef.current = false;
             setSaving(false);
 
-            if (serializeForm(formRef.current) !== lastSavedSnapshotRef.current) {
+            const currentSnapshot = serializeForm(formRef.current);
+            if (currentSnapshot !== attemptedSnapshot && currentSnapshot !== lastSavedSnapshotRef.current) {
                 scheduleImmediateSave();
             }
         }

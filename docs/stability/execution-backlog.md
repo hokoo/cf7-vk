@@ -32,6 +32,7 @@ Execution status as of 2026-08-31:
 - `T6`: completed; migration/lifecycle characterization, relation fixtures, damaged fixture repair evidence, and all published/tagged baselines are covered.
 - `T7`: completed; VK API and Long Poll HTTP calls are isolated behind a gateway contract, normalized delivery result, VK-aware redactor, and recording fake test harness.
 - `T8`: completed; `Logger::write()` centrally redacts sensitive keys, VK tokens, Long Poll keys, emails, phones, and custom filter patterns before hook dispatch and database storage.
+- `T9`: completed; credential updates now validate candidate group/token/API version through the VK gateway before persistence and reset bot-owned relations only after validated community identity changes.
 
 Completed first execution batch after approval:
 
@@ -40,7 +41,7 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T9. Add Transactional VK Credential Update Contract`
+- `T10. Harden VK Long Poll Cursor, Locks, And Update Processing`
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -725,7 +726,7 @@ Notes/Risks:
 
 ## T9. Add Transactional VK Credential Update Contract
 
-Status: todo
+Status: completed
 
 Goal: avoid replacing a working VK bot configuration with unvalidated group/token/API version values.
 
@@ -773,10 +774,34 @@ Dependencies:
 Notes/Risks:
 
 - VK may validate `groups.getById` differently from Long Poll bootstrap. Prefer a validation sequence that proves both community access and Long Poll readiness when Long Poll is required for this plugin.
+- Implemented files:
+  - updates to `plugin-dir/lib/Bot.php`;
+  - updates to `plugin-dir/lib/Controllers/RestApi/BotController.php`;
+  - updates to `plugin-dir/lib/Controllers/RestApi.php`;
+  - updates to `plugin-dir/react/src/components/Bot.js`;
+  - updates to `plugin-dir/react/src/components/NewBot.js`;
+  - updates to `plugin-dir/react/src/App.js`;
+  - updates to `plugin-dir/react/src/utils/api.js`;
+  - `plugin-dir/tests/RestBotControllerTest.php`;
+  - `plugin-dir/react/src/components/Bot.test.js`;
+  - REST stubs added to `plugin-dir/tests/bootstrap.php`.
+- New endpoint: `POST /wp/v2/cf7vk_bot/{id}/credentials`.
+- Failed candidate validation does not mutate stored token, group ID, API version, community identity, Long Poll state, title, or relations.
+- Same community identity preserves bot-owned relations; different identity resets bot-owned `bot2chat` and `bot2channel` relations after successful validation.
+- React saves group/token changes through the credentials endpoint, shows validation failures, does not overwrite UI state with failed responses, and does not ping again immediately after transactional validation.
+- Verification evidence:
+  - `php -l` passed for changed backend PHP files and the new REST test.
+  - `cd plugin-dir && composer test` passed through the compatibility runner on local PHP 8.0.30: 83 tests, 0 failures, 1 PHP 8.1 dependency-heavy skip.
+  - `CI=true npm --prefix plugin-dir/react test -- --watchAll=false --runInBand` passed: 3 suites, 6 tests.
+  - `git diff --check` passed.
+  - `./scripts/build-release-zip.sh` passed after T9.
+  - `./scripts/validate-release-zip.sh dist/message-bridge-for-contact-form-7-and-vk-wp-plugin.zip 0.1.4` passed after T9.
+  - Current candidate ZIP SHA-256 is `589c9a9e8d81b8bafcf4ec8aaf21e4c1cd4e3b4a99478c8046b8d8bdd032a8f0`; size is `257072` bytes.
+  - `tests/stability/e1-smoke-matrix.sh --case fresh` passed: summary `/tmp/cf7vk-e1-20260831T164002Z-55539.lTdgDp/results/summary.json`, 25 steps, 25 passed, 0 skipped, 0 failures.
 
 ## T10. Harden VK Long Poll Cursor, Locks, And Update Processing
 
-Status: waiting_dependency
+Status: todo
 
 Goal: make VK dialog discovery deterministic and safe under transport, malformed payload, per-update, and concurrency failures.
 

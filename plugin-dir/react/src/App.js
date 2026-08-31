@@ -192,6 +192,7 @@ const App = () => {
                                     refreshBots={refreshBots}
                                     refreshBotRuntime={refreshBotRuntime}
                                     refreshBotChatConnections={refreshBotChatConnections}
+                                    refreshBotChannelConnections={refreshBotChannelConnections}
                                     refreshChatChannelConnections={refreshChatChannelConnections}
                                 />
                             ))}

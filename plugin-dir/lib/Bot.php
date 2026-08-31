@@ -224,6 +224,18 @@ class Bot extends Entity implements wpPostAble {
 		return $this;
 	}
 
+	public function getCommunityId(): string {
+		return (string) $this->getParam( 'communityId' );
+	}
+
+	public function getCommunityName(): string {
+		return (string) $this->getParam( 'communityName' );
+	}
+
+	public function getCommunityScreenName(): string {
+		return (string) $this->getParam( 'communityScreenName' );
+	}
+
 	/**
 	 * @throws MissingParameters
 	 * @throws ConnectionWrongData
@@ -432,6 +444,90 @@ class Bot extends Entity implements wpPostAble {
 
 			throw $e;
 		}
+	}
+
+	/**
+	 * @throws TransportNotConfigured
+	 * @throws VkApiException
+	 * @throws wppaSavePostException
+	 */
+	public function updateCredentials(
+		string $group_id,
+		string $access_token,
+		string $api_version = self::DEFAULT_API_VERSION,
+		?string $auth_command = null
+	): array {
+		$group_id = self::normalizeGroupIdValue( $group_id );
+		$access_token = trim( $access_token );
+		$api_version = trim( $api_version ) ?: self::DEFAULT_API_VERSION;
+
+		if ( self::isMaskedSecretValue( $access_token ) ) {
+			$access_token = (string) $this->getAccessToken();
+		}
+
+		if ( $this->isAccessTokenDefined() ) {
+			$access_token = (string) $this->getAccessToken();
+		}
+
+		if ( $this->isGroupIdDefined() ) {
+			$group_id = self::normalizeGroupIdValue( $this->getGroupId() );
+		}
+
+		$api = new VkApi( $access_token, $api_version );
+		$community = $api->getCommunity( $group_id );
+		$community_id = $this->resolveCommunityId( $community, $group_id );
+		$community_screen_name = (string) ( $community['screen_name'] ?? '' );
+		$community_name = trim( (string) ( $community['name'] ?? $community_screen_name ?: $this->getTitle() ) );
+		$long_poll = $api->getLongPollServer( $group_id );
+		$long_poll_server = trim( (string) ( $long_poll['server'] ?? '' ) );
+		$long_poll_key = trim( (string) ( $long_poll['key'] ?? '' ) );
+		$long_poll_ts = trim( (string) ( $long_poll['ts'] ?? '' ) );
+
+		if ( '' === $long_poll_server || '' === $long_poll_key || '' === $long_poll_ts ) {
+			throw VkApiException::missingResponsePayload( $long_poll );
+		}
+
+		$previous_identity = $this->getCommunityId() ?: self::normalizeGroupIdOrEmpty( $this->getGroupId() );
+		$identity_changed = '' !== $previous_identity && $previous_identity !== $community_id;
+		$timestamp = gmdate( 'c' );
+
+		$this->setParam( 'groupId', $group_id );
+		$this->setParam( 'apiVersion', $api_version );
+		$this->setParam( 'communityId', $community_id );
+		$this->setParam( 'communityName', $community_name );
+		$this->setParam( 'communityScreenName', $community_screen_name );
+		$this->setParam( 'longPollServer', $long_poll_server );
+		$this->setParam( 'longPollKey', $long_poll_key );
+		$this->setParam( 'longPollTs', $long_poll_ts );
+		$this->setParam( 'lastSyncAt', $timestamp );
+		$this->setParam( 'lastStatus', self::STATUS_ONLINE );
+
+		if ( ! $this->isAccessTokenDefined() ) {
+			$this->setParam( 'accessToken', $access_token );
+		}
+
+		if ( null !== $auth_command ) {
+			$this->setParam( 'authCommand', trim( $auth_command ) ?: self::DEFAULT_AUTH_COMMAND );
+		}
+
+		$this->savePost();
+		$this->api = null;
+		$this->persistCommunityTitle( $community_name );
+
+		$relations_reset = $identity_changed ? $this->resetBotOwnedRelations() : 0;
+
+		return [
+			'groupId' => $group_id,
+			'communityId' => $community_id,
+			'communityName' => $community_name,
+			'communityScreenName' => $community_screen_name,
+			'longPollReady' => true,
+			'longPollServer' => $long_poll_server,
+			'longPollTs' => $long_poll_ts,
+			'lastSyncAt' => $timestamp,
+			'identityChanged' => $identity_changed,
+			'relationsReset' => $relations_reset,
+		];
 	}
 
 	private function persistCommunityTitle( string $community_name ): void {
@@ -643,8 +739,11 @@ class Bot extends Entity implements wpPostAble {
 	 * @throws TransportNotConfigured
 	 */
 	private function getNormalizedGroupId(): string {
-		$group_id = trim( $this->getGroupId() );
+		return self::normalizeGroupIdValue( $this->getGroupId() );
+	}
 
+	private static function normalizeGroupIdValue( string $group_id ): string {
+		$group_id = trim( $group_id );
 		if ( '' === $group_id ) {
 			throw TransportNotConfigured::missingGroupId();
 		}
@@ -654,6 +753,58 @@ class Bot extends Entity implements wpPostAble {
 		}
 
 		return ltrim( $group_id, '-' );
+	}
+
+	private static function normalizeGroupIdOrEmpty( string $group_id ): string {
+		try {
+			return self::normalizeGroupIdValue( $group_id );
+		} catch ( TransportNotConfigured $e ) {
+			return '';
+		}
+	}
+
+	private function resolveCommunityId( array $community, string $group_id ): string {
+		$identity = trim( (string) ( $community['id'] ?? '' ) );
+
+		return '' !== $identity ? ltrim( $identity, '-' ) : $group_id;
+	}
+
+	private function resetBotOwnedRelations(): int {
+		$connection_ids = array_values(
+			array_filter(
+				array_map(
+					'intval',
+					Util::getWPDB()->get_col(
+						Util::getWPDB()->prepare(
+							'SELECT ID FROM ' . Util::getWPDB()->prefix . 'post_connections_cf7_vk WHERE relation IN (%s, %s) AND `from` = %d',
+							Client::BOT2CHAT,
+							Client::BOT2CHANNEL,
+							$this->getPost()->ID
+						)
+					)
+				)
+			)
+		);
+
+		if ( empty( $connection_ids ) ) {
+			return 0;
+		}
+
+		$placeholders = implode( ', ', array_fill( 0, count( $connection_ids ), '%d' ) );
+		Util::getWPDB()->query(
+			Util::getWPDB()->prepare(
+				'DELETE FROM ' . Util::getWPDB()->prefix . 'post_connections_meta_cf7_vk WHERE connection_id IN (' . $placeholders . ')',
+				$connection_ids
+			)
+		);
+		Util::getWPDB()->query(
+			Util::getWPDB()->prepare(
+				'DELETE FROM ' . Util::getWPDB()->prefix . 'post_connections_cf7_vk WHERE ID IN (' . $placeholders . ')',
+				$connection_ids
+			)
+		);
+
+		return count( $connection_ids );
 	}
 
 	private function persistStateSafely( array $params ): void {

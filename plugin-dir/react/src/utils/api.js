@@ -99,20 +99,32 @@ export const fetchBotsForChats = async () => apiRequest(cf7vkData.routes.relatio
 export const fetchChatsForChannels = async () => apiRequest(cf7vkData.routes.relations.chat2channel);
 export const fetchFormsForChannels = async () => apiRequest(cf7vkData.routes.relations.form2channel);
 
-export const apiCreateBot = async ({title, groupId, accessToken, authCommand}) => apiRequest(
-    cf7vkData.routes.bots,
-    'POST',
-    {
+export const apiCreateBot = async ({title, groupId, accessToken, authCommand}) => {
+    const payload = {
         title,
         status: 'publish',
-        groupId,
-        accessToken,
         authCommand
+    };
+
+    if (undefined !== groupId) {
+        payload.groupId = groupId;
     }
-);
+
+    if (undefined !== accessToken) {
+        payload.accessToken = accessToken;
+    }
+
+    return apiRequest(cf7vkData.routes.bots, 'POST', payload);
+};
 
 export const apiSaveBot = async (botId, payload) => apiRequest(
     `${cf7vkData.routes.bots}${botId}`,
+    'POST',
+    payload
+);
+
+export const apiSaveBotCredentials = async (botId, payload) => apiRequest(
+    `${cf7vkData.routes.bots}${botId}/credentials`,
     'POST',
     payload
 );

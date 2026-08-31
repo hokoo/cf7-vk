@@ -139,6 +139,9 @@ class RestApi {
 		self::registerBotMetaField( 'longPollServer', 'Current VK Long Poll server URL.' );
 		self::registerBotMetaField( 'longPollTs', 'Current VK Long Poll timestamp.' );
 		self::registerBotMetaField( 'lastSyncAt', 'Time of the latest successful VK sync.' );
+		self::registerBotReadonlyMetaField( 'communityId', 'Validated VK community identity.' );
+		self::registerBotReadonlyMetaField( 'communityName', 'Validated VK community name.' );
+		self::registerBotReadonlyMetaField( 'communityScreenName', 'Validated VK community screen name.' );
 	}
 
 	private static function registerBotMetaField( string $field, string $description ): void {
@@ -204,6 +207,34 @@ class RestApi {
 				'schema' => [
 					'description' => $description,
 					'type' => 'string',
+				],
+			]
+		);
+	}
+
+	private static function registerBotReadonlyMetaField( string $field, string $description ): void {
+		register_rest_field(
+			Client::CPT_BOT,
+			$field,
+			[
+				'get_callback' => static function ( $object ) use ( $field ) {
+					$bot = new Bot( $object['id'] );
+
+					switch ( $field ) {
+						case 'communityId':
+							return $bot->getCommunityId();
+						case 'communityName':
+							return $bot->getCommunityName();
+						case 'communityScreenName':
+							return $bot->getCommunityScreenName();
+						default:
+							return null;
+					}
+				},
+				'schema' => [
+					'description' => $description,
+					'type' => 'string',
+					'readonly' => true,
 				],
 			]
 		);

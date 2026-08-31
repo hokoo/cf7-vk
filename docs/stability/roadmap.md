@@ -42,7 +42,8 @@ Implementation progress as of 2026-08-31:
 - `T6. Add Migration And Lifecycle Characterization Evidence`: completed.
 - `T7. Introduce VK Gateway Contract And Recording Fake`: completed.
 - `T8. Add Central Redaction For Logs, Transport Errors, And Evidence`: completed.
-- Next execution-ready task: `T9. Add Transactional VK Credential Update Contract`.
+- `T9. Add Transactional VK Credential Update Contract`: completed.
+- Next execution-ready task: `T10. Harden VK Long Poll Cursor, Locks, And Update Processing`.
 
 ## Reference Stability Scope
 
@@ -268,6 +269,11 @@ Evidence:
 
 - `RestApi::registerBotFields()` writes `accessToken`, `groupId`, and other bot meta through generic update callbacks.
 - `Bot::setAccessToken()` and `Bot::setGroupId()` persist values before any successful VK validation is required.
+
+Status as of 2026-08-31:
+
+- mitigated by T9 for the React credential flow and new dedicated REST endpoint;
+- generic field callbacks remain backward compatible, but the admin UI now sends group/token changes through transactional validation.
 - `Bot.js` saves connection settings and then pings.
 
 Risk:
