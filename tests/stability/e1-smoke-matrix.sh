@@ -51,7 +51,8 @@ Environment:
   CF7VK_E1_WP_VERSION                 WordPress core version, default latest.
   CF7VK_E1_WP_CLI_IMAGE               WP-CLI Docker image, default wordpress:cli-php8.3.
   CF7VK_E1_CF7_VERSION                Contact Form 7 version, default latest.
-  CF7VK_E1_FIXTURE                    modern-heavy, modern-basic, partial-modern, or none. Default modern-heavy.
+  CF7VK_E1_FIXTURE                    modern-heavy, modern-basic, legacy-heavy, legacy-basic,
+                                      damaged-modern, partial-modern, or none. Default modern-heavy.
   CF7VK_E2_CHARACTERIZATION           Run migration/lifecycle characterization after upgrades. Default 1.
   CF7VK_E1_CACHE_DIR                  Cache for downloaded source zips.
   CF7VK_E1_RESULTS_DIR                Evidence output directory.
@@ -103,7 +104,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ "${#CASES[@]}" -eq 0 ]; then
-	CASES=(fresh upgrade-v-0.1.0 upgrade-v-0.1.1 upgrade-v-0.1.3 upgrade-v-0.1.4)
+	CASES=(fresh upgrade-v-0.1.0 upgrade-v-0.1.1 upgrade-v-0.1.2 upgrade-v-0.1.3 upgrade-v-0.1.4)
 fi
 
 mkdir -p "${CACHE_DIR}" "${RESULTS_DIR}" "${LOG_DIR}" "${STATE_DIR}" "${ROLLBACK_DIR}" "${ARTIFACT_DIR}" "${RUNTIME_DIR}"
@@ -303,7 +304,7 @@ trap on_exit EXIT
 
 require_tools() {
 	local missing=()
-	for tool in curl jq rsync sha256sum unzip zip; do
+	for tool in composer curl git jq npm rsync sha256sum tar unzip zip; do
 		command -v "${tool}" >/dev/null 2>&1 || missing+=("${tool}")
 	done
 
@@ -376,6 +377,117 @@ verify_git_tag_version() {
 	skip_step "artifact-${matrix_id}" "public_zip" "No public installable ZIP is recorded; local git tag was verified for traceability." "$(jq -nc --arg tag "${tag}" --arg version "${actual}" --arg commit "${commit}" --arg tag_object "${tag_object}" '{tag:$tag,version:$version,commit:$commit,tag_object:$tag_object}')"
 }
 
+build_git_tag_artifact() {
+	local index="$1"
+	local output_zip="$2"
+	local matrix_id tag version root_dir build_root source_dir stage_root stage_plugin source_plugin epoch log_file
+
+	matrix_id="$(jq -r ".legacy_versions[${index}].matrix_id" "${SOURCE_MANIFEST}")"
+	tag="$(jq -r ".legacy_versions[${index}].tag" "${SOURCE_MANIFEST}")"
+	version="$(jq -r ".legacy_versions[${index}].version" "${SOURCE_MANIFEST}")"
+	root_dir="$(jq -r ".legacy_versions[${index}].root_dir" "${SOURCE_MANIFEST}")"
+	build_root="${WORKDIR}/tag-build-${matrix_id}"
+	source_dir="${build_root}/source"
+	stage_root="${build_root}/stage"
+	stage_plugin="${stage_root}/${root_dir}"
+	source_plugin="${source_dir}/plugin-dir"
+	epoch="$(git -C "${REPO_ROOT}" log -1 --format=%ct "${tag}^{commit}")"
+	log_file="${LOG_DIR}/artifact-${matrix_id}-local_tag_build.log"
+
+	rm -rf "${build_root}"
+	mkdir -p "${source_dir}" "${stage_plugin}" "$(dirname "${output_zip}")"
+
+	(
+		set -euo pipefail
+
+		printf 'Building local git-tag artifact %s (%s)\n' "${tag}" "${version}"
+		git -C "${REPO_ROOT}" archive "${tag}" | tar -x -C "${source_dir}"
+
+		[ -f "${source_plugin}/${ENTRYPOINT}" ] || {
+			printf 'Plugin entrypoint missing in tag: %s\n' "${source_plugin}/${ENTRYPOINT}" >&2
+			exit 1
+		}
+
+		npm --prefix "${source_plugin}/react" ci
+		CI=false npm --prefix "${source_plugin}/react" run build
+
+		rsync -a --delete \
+			--exclude '/vendor' \
+			--exclude '/tests' \
+			--exclude '/phpunit.xml.dist' \
+			--exclude '/react/build' \
+			--exclude '/react/node_modules' \
+			--exclude '/react/src' \
+			--exclude '/react/public' \
+			--exclude '/react/scripts' \
+			--exclude '/react/package.json' \
+			--exclude '/react/package-lock.json' \
+			--exclude '/react/README.md' \
+			--exclude '/react/config-overrides.js' \
+			--exclude '/react/webpack.config.js' \
+			--exclude '/react/jest-unit.config.js' \
+			--exclude '/phpunit.xml' \
+			--exclude '/.git' \
+			--exclude '/.gitignore' \
+			--exclude '/.github' \
+			--exclude '/.env' \
+			--exclude '/.env.*' \
+			"${source_plugin}/" "${stage_plugin}/"
+
+		mkdir -p "${stage_plugin}/react/build"
+		rsync -a --delete "${source_plugin}/react/build/" "${stage_plugin}/react/build/"
+
+		composer --working-dir="${stage_plugin}" install --no-dev --no-interaction --prefer-dist --optimize-autoloader --ignore-platform-req=php
+		[ -f "${stage_plugin}/vendor/autoload.php" ]
+		rm -f "${stage_plugin}/composer.json" "${stage_plugin}/composer.lock"
+		rm -rf "${stage_plugin}/vendor/ramsey/collection/build"
+
+		find "${stage_plugin}/vendor" -depth -type d \( \
+			-name 'local-dev' -o \
+			-iname 'test' -o \
+			-iname 'tests' -o \
+			-iname 'doc' -o \
+			-iname 'docs' -o \
+			-iname 'example' -o \
+			-iname 'examples' -o \
+			-iname '.github' -o \
+			-iname '.circleci' -o \
+			-iname '.gitlab' -o \
+			-iname 'vendor-bin' -o \
+			-iname 'phpstan' -o \
+			-iname 'psalm' -o \
+			-iname 'docker' \
+		\) -exec rm -rf {} +
+		find "${stage_plugin}/vendor" -type f \( \
+			-iname 'phpunit*' -o \
+			-iname 'phpstan*' -o \
+			-iname 'psalm*' -o \
+			-iname 'phpcs*' -o \
+			-iname 'php-wp-unit.xml' -o \
+			-iname 'makefile' -o \
+			-iname 'postman.json' -o \
+			-iname 'captainhook.json' -o \
+			-iname 'codecov.yml' -o \
+			-iname 'conventional-commits.json' -o \
+			-iname 'composer.json' -o \
+			-iname 'composer.lock' -o \
+			-iname '.php_cs*' -o \
+			-iname 'dockerfile*' \
+		\) -delete
+		find "${stage_plugin}" -type f \( -name '*.key' -o -name '*.pem' -o -name '*.sql' -o -name '*.zip' -o -name '*.tgz' -o -name '*.tar' -o -name '*.tar.gz' -o -name '*.map' \) -delete
+		find "${stage_plugin}" -depth -name '.*' -exec rm -rf {} +
+		find "${stage_plugin}" -exec touch -h -d "@${epoch}" {} +
+
+		rm -f "${output_zip}"
+		(
+			cd "${stage_root}"
+			find "${root_dir}" -print | LC_ALL=C sort | zip -X -q "${output_zip}" -@
+		)
+	) >"${log_file}" 2>&1
+
+	emit "artifact-${matrix_id}" "local_tag_build" "pass" "Built installable artifact from local git tag." "$(jq -nc --arg tag "${tag}" --arg version "${version}" --arg output_zip "${output_zip}" --arg log "${log_file}" --arg sha256 "$(sha256sum "${output_zip}" | awk '{print $1}')" --argjson bytes "$(wc -c < "${output_zip}")" '{tag:$tag,version:$version,file:$output_zip,sha256:$sha256,bytes:$bytes,log:$log}')"
+}
+
 prepare_candidate() {
 	local candidate_zip="${ARTIFACT_DIR}/${PLUGIN_SLUG}-candidate.zip"
 	local expected="${CF7VK_EXPECTED_CANDIDATE_VERSION:-${DEFAULT_CANDIDATE_VERSION}}"
@@ -412,18 +524,33 @@ download_and_verify_sources() {
 	count="$(jq '.legacy_versions | length' "${SOURCE_MANIFEST}")"
 
 	for i in $(seq 0 $((count - 1))); do
-		local matrix_id version source_type url expected_sha header_path zip_file actual_sha artifact_file
+		local matrix_id version source_type url expected_sha header_path root_dir zip_file actual_sha artifact_file
 		matrix_id="$(jq -r ".legacy_versions[${i}].matrix_id" "${SOURCE_MANIFEST}")"
 		version="$(jq -r ".legacy_versions[${i}].version" "${SOURCE_MANIFEST}")"
 		source_type="$(jq -r ".legacy_versions[${i}].source_type" "${SOURCE_MANIFEST}")"
 		url="$(jq -r ".legacy_versions[${i}].url // empty" "${SOURCE_MANIFEST}")"
 		expected_sha="$(jq -r ".legacy_versions[${i}].sha256 // empty" "${SOURCE_MANIFEST}")"
 		header_path="$(jq -r ".legacy_versions[${i}].header_path_in_zip" "${SOURCE_MANIFEST}")"
+		root_dir="$(jq -r ".legacy_versions[${i}].root_dir" "${SOURCE_MANIFEST}")"
 		zip_file="${CACHE_DIR}/${PLUGIN_SLUG}.${version}.zip"
 		artifact_file="${ARTIFACT_DIR}/${PLUGIN_SLUG}.${version}.zip"
 
 		if [ "${source_type}" = "local_git_tag" ]; then
-			verify_git_tag_version "${i}" || true
+			if [ -f "${zip_file}" ] && ! unzip -l "${zip_file}" "${root_dir}/vendor/autoload.php" >/dev/null 2>&1; then
+				rm -f "${zip_file}"
+			fi
+			if [ ! -f "${zip_file}" ]; then
+				build_git_tag_artifact "${i}" "${zip_file}" || {
+					fail_step "artifact-${matrix_id}" "local_tag_build" "Could not build installable artifact from local git tag." "$(jq -nc --arg tag "$(jq -r ".legacy_versions[${i}].tag" "${SOURCE_MANIFEST}")" '{tag:$tag}')"
+					exit 3
+				}
+			fi
+			if ! unzip -l "${zip_file}" "${root_dir}/vendor/autoload.php" >/dev/null 2>&1; then
+				fail_step "artifact-${matrix_id}" "local_tag_build" "Built local git tag artifact does not contain vendor/autoload.php." "$(jq -nc --arg file "${zip_file}" '{file:$file}')"
+				exit 3
+			fi
+			verify_zip_version "artifact-${matrix_id}" "version" "${zip_file}" "${header_path}" "${version}" || exit 3
+			cp "${zip_file}" "${artifact_file}"
 			continue
 		fi
 
@@ -636,11 +763,6 @@ run_upgrade_case() {
 		return 1
 	fi
 
-	if [ "${source_type}" = "local_git_tag" ]; then
-		skip_step "${case_id}" "legacy_artifact" "Case requires a local git-tag build artifact that is not implemented in T3 partial harness." "$(jq -nc --arg matrix_id "${matrix_id}" '{matrix_id:$matrix_id,follow_up:"Recover public ZIP or implement local tag package builder."}')"
-		return 0
-	fi
-
 	CURRENT_PROJECT="$(project_name_for_case "${case_id}")"
 	cleanup_project
 
@@ -674,7 +796,7 @@ run_upgrade_case() {
 		write_state "${case_id}" "after-upgrade" || rc=1
 		assert_active_version "${case_id}" "after-upgrade" "${version}" || true
 		if [ "${CHARACTERIZATION}" = "1" ]; then
-			assert_state_jq "${case_id}" "after-upgrade" ".migration.status == \"completed\" and .migration.version_option == \"${version}\" and .migration.error_count == 0 and (.fingerprints.lifecycle | type == \"string\")" "Migration state completed and lifecycle fingerprint was captured." || true
+			assert_state_jq "${case_id}" "after-upgrade" ".migration.status == \"completed\" and .migration.version_option == \"${version}\" and .migration.error_count == 0 and (.relations.duplicate_signatures | length == 0) and (.fingerprints.lifecycle | type == \"string\")" "Migration state completed, relation duplicates are absent, and lifecycle fingerprint was captured." || true
 		fi
 	fi
 

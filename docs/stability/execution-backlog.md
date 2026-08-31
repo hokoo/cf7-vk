@@ -26,10 +26,10 @@ Execution status as of 2026-08-31:
 - `S0`: completed by owner approval in chat.
 - `T1`: completed for source/test harness; locally verified through compat runner because the available CLI runtime is PHP 8.0.30 while the plugin requires PHP 8.1.
 - `T2`: completed; release ZIP build and validation pass, and repeated builds are byte-identical.
-- `T3`: completed for the current lifecycle smoke contract; the full Docker matrix passes, with `v-0.1.2` explicitly recorded as a tag without a recovered public ZIP.
+- `T3`: completed for the current lifecycle smoke contract; the full Docker matrix passes, with `v-0.1.2` covered by a local git-tag package builder because no public ZIP was found.
 - `T4`: completed; maintenance lifecycle, repair, retention, and slug-rename activation hardening are implemented and covered.
 - `T5`: completed; migration runner state, locks, retry, self-heal, and admin recovery guards are implemented and covered.
-- `T6`: in progress; migration/lifecycle characterization evidence is integrated into the smoke harness, while relation fixture expansion remains open.
+- `T6`: completed; migration/lifecycle characterization, relation fixtures, damaged fixture repair evidence, and all published/tagged baselines are covered.
 
 Completed first execution batch after approval:
 
@@ -38,7 +38,6 @@ Completed first execution batch after approval:
 
 Current next execution target:
 
-- `T6. Add Migration And Lifecycle Characterization Evidence` remaining relation-fixture slice.
 - `T7. Introduce VK Gateway Contract And Recording Fake`
 
 ## S0. Approve VK Stability Contract And First Batch
@@ -308,10 +307,11 @@ Notes/Risks:
   - After T4, `tests/stability/e1-smoke-matrix.sh --case upgrade-v-0.1.0` passed, proving the legacy `cf7-vk/` root can upgrade to the current `message-bridge-for-contact-form-7-and-vk/` root without a duplicate global function fatal.
   - After T4, full `tests/stability/e1-smoke-matrix.sh` passed: summary `/tmp/cf7vk-e1-20260831T144624Z-97750.f4c6I4/results/summary.json`, 129 steps, 128 passed, 1 skipped for the missing public `v-0.1.2` ZIP, 0 failures; current candidate SHA-256 `ae4fc79bf9548824fe7c5ee86fc5385923d27a2a2ef5fed006f44dc281f19d94`.
   - After T5, full `tests/stability/e1-smoke-matrix.sh` passed: summary `/tmp/cf7vk-e1-20260831T152054Z-8070.KTunYL/results/summary.json`, 129 steps, 128 passed, 1 skipped for the missing public `v-0.1.2` ZIP, 0 failures; current candidate SHA-256 `5dd83b81f51a5f3216176fbd58ca00d8c20d69485d7bd4da97873f00838232bf`.
+  - After T6, full `tests/stability/e1-smoke-matrix.sh` passed with `v-0.1.2` included through local tag packaging: summary `/tmp/cf7vk-e1-20260831T160122Z-37689.bEHEDH/results/summary.json`, 165 steps, 165 passed, 0 skipped, 0 failures; current candidate SHA-256 `5dd83b81f51a5f3216176fbd58ca00d8c20d69485d7bd4da97873f00838232bf`.
 - Follow-up risks:
   - The harness now captures lifecycle state and exercises maintenance hooks; deeper migration-state characterization remains owned by `T6`.
   - `upgrade-v-0.1.0` uses an old plugin root; candidate activation is now guarded against duplicate global function declarations during same-process slug migration.
-  - `upgrade-v-0.1.2` needs either a recovered public ZIP or a local tag package builder before it can be part of required evidence.
+  - `upgrade-v-0.1.2` is covered by a local git-tag package builder because no public installable ZIP was found.
 
 ## T4. Implement Maintenance Lifecycle, Repair, And Log Retention
 
@@ -487,7 +487,7 @@ Notes/Risks:
 
 ## T6. Add Migration And Lifecycle Characterization Evidence
 
-Status: in_progress
+Status: completed
 
 Goal: turn lifecycle and migration behavior into repeatable evidence across published baselines and damaged fixtures.
 
@@ -536,31 +536,40 @@ Dependencies:
 Notes/Risks:
 
 - Do not import raw production data. Use redacted structural fixtures that match `production-fixture.schema.json`.
-- Partial T6 slice implemented on 2026-08-31:
+- Implemented files:
   - `tests/stability/wp-characterize-migration.php`;
+  - `tests/stability/wp-seed-fixture.php`;
   - `tests/stability/wp-state-snapshot.php`;
-  - `tests/stability/e1-smoke-matrix.sh`.
-- Behavior implemented in the partial slice:
+  - `tests/stability/e1-smoke-matrix.sh`;
+  - `tests/stability/e1-version-sources.json`.
+- Behavior implemented:
   - `CF7VK_E2_CHARACTERIZATION=1` default gate after candidate upgrade;
   - direct migration runner characterization in a fresh WP-CLI process after upgrade;
   - first-run completion assertion;
   - second-run idempotency assertion through unchanged attempts and stable fingerprint;
   - migration state, relation summary, and lifecycle fingerprint in every state snapshot;
-  - structured JSON result embedded into `summary.json` for `migration_characterization` steps.
-- Verification evidence for the partial slice:
+  - structured JSON result embedded into `summary.json` for `migration_characterization` steps;
+  - relation-seeding fixtures for bot-chat, bot-channel, chat-channel, and form-channel relations;
+  - `modern-heavy`, `modern-basic`, `legacy-heavy`, `legacy-basic`, `partial-modern`, `damaged-modern`, and `none` fixture modes;
+  - damaged fixture dry-run/apply repair evidence through `Maintenance::buildRepairPlan()` and `Maintenance::runRepair( apply )`;
+  - local git-tag package builder for `v-0.1.2` when no public installable ZIP exists.
+- Verification evidence:
   - `php -l tests/stability/wp-state-snapshot.php` passed.
   - `php -l tests/stability/wp-characterize-migration.php` passed.
+  - `php -l tests/stability/wp-seed-fixture.php` passed.
   - `bash -n tests/stability/e1-smoke-matrix.sh` passed.
-  - `git diff --check` passed before the documentation update.
+  - `jq . tests/stability/e1-version-sources.json >/dev/null` passed.
+  - `git diff --check` passed before documentation updates.
   - `tests/stability/e1-smoke-matrix.sh --case upgrade-v-0.1.4` passed after parser fix: summary `/tmp/cf7vk-e1-20260831T153248Z-16553.5Vathd/results/summary.json`, 38 steps, 37 passed, 1 skipped, 0 failures; characterization `ok=true`, first/second status `completed`, attempts remained `1`, fingerprint stable.
   - `tests/stability/e1-smoke-matrix.sh --case upgrade-v-0.1.0` passed: summary `/tmp/cf7vk-e1-20260831T153358Z-18203.tbkWD7/results/summary.json`, 38 steps, 37 passed, 1 skipped, 0 failures; characterization `ok=true`, source `0.1.0`, target `0.1.4`, fingerprint stable.
   - Full `tests/stability/e1-smoke-matrix.sh` passed after T6 partial: summary `/tmp/cf7vk-e1-20260831T153506Z-19850.CNrMu9/results/summary.json`, 137 steps, 136 passed, 1 skipped for missing public `v-0.1.2`, 0 failures.
   - In the full matrix, `upgrade-v-0.1.0`, `upgrade-v-0.1.1`, `upgrade-v-0.1.3`, and `upgrade-v-0.1.4` all emitted `migration_characterization` with `ok=true`, first/second status `completed`, attempts `1`, `error_count=0`, and stable after-first/after-second fingerprints.
-- Remaining T6 work:
-  - add relation-seeding fixtures that create bot-chat, bot-channel, chat-channel, and form-channel relations instead of only CPT rows;
-  - add damaged-modern and partial-modern relation variants that exercise repair plans;
-  - assert second migration run does not duplicate relations once relation fixtures exist;
-  - recover or locally package `v-0.1.2` if that baseline must become required evidence.
+  - `tests/stability/e1-smoke-matrix.sh --case upgrade-v-0.1.4` passed with relation fixtures: summary `/tmp/cf7vk-e1-20260831T155326Z-30222.1pH9qv/results/summary.json`, 38 steps, 37 passed, 1 skipped from the then-unbuilt `v-0.1.2` artifact-only preflight, 0 failures; relation counts were `bot2chat=4`, `bot2channel=1`, `chat2channel=4`, `form2channel=2`, total `11`, duplicates `0`, repair plan `0`.
+  - `CF7VK_E1_FIXTURE=damaged-modern tests/stability/e1-smoke-matrix.sh --case upgrade-v-0.1.4` passed: summary `/tmp/cf7vk-e1-20260831T155436Z-31865.b2BDF0/results/summary.json`, 38 steps, 37 passed, 1 skipped from the then-unbuilt `v-0.1.2` artifact-only preflight, 0 failures; expected repair `2`, dry-run planned `2`, apply deleted `2`, post-repair relations returned to total `11`.
+  - `tests/stability/e1-smoke-matrix.sh --case upgrade-v-0.1.2` passed after local tag packaging: summary `/tmp/cf7vk-e1-20260831T155955Z-35727.ulPFio/results/summary.json`, 39 steps, 39 passed, 0 skipped, 0 failures; local `v-0.1.2` artifact SHA-256 `377a1f392058448496f0309c2c2acfc148138d279345cd1320610b0260856069`, size `237390` bytes.
+  - Full `tests/stability/e1-smoke-matrix.sh` passed after T6 completion: summary `/tmp/cf7vk-e1-20260831T160122Z-37689.bEHEDH/results/summary.json`, 165 steps, 165 passed, 0 skipped, 0 failures.
+  - In the final full matrix, `upgrade-v-0.1.0`, `upgrade-v-0.1.1`, `upgrade-v-0.1.2`, `upgrade-v-0.1.3`, and `upgrade-v-0.1.4` all emitted `migration_characterization` with `ok=true`, relation total `11`, duplicates `0`, source/target versions correct, and stable after-first/after-second fingerprints.
+  - `CF7VK_E1_FIXTURE=partial-modern tests/stability/e1-smoke-matrix.sh --case upgrade-v-0.1.4` passed: summary `/tmp/cf7vk-e1-20260831T160831Z-46358.FxkE0J/results/summary.json`, 38 steps, 38 passed, 0 skipped, 0 failures; relation total `1`, duplicates `0`, fingerprint stable.
 
 ## T7. Introduce VK Gateway Contract And Recording Fake
 

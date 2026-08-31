@@ -234,6 +234,53 @@ function cf7vk_e2_fingerprint(): array {
 	];
 }
 
+function cf7vk_e2_fixture_expectations(): array {
+	$expectations = get_option( 'cf7vk_e1_fixture_expectations', [] );
+
+	return is_array( $expectations ) ? $expectations : [];
+}
+
+function cf7vk_e2_assert_fixture_counts( array $fingerprint, array $expectations, string $label, array &$errors ): void {
+	if ( empty( $expectations ) ) {
+		return;
+	}
+
+	$source = $fingerprint['source'] ?? [];
+	$post_counts = is_array( $source['post_counts'] ?? null ) ? $source['post_counts'] : [];
+	$relations = is_array( $source['relations'] ?? null ) ? $source['relations'] : [];
+	$relation_counts = is_array( $expectations['relation_counts'] ?? null ) ? $expectations['relation_counts'] : [];
+
+	$expected_posts = [
+		'cf7vk_bot'         => (int) ( $expectations['bot_count'] ?? 0 ),
+		'cf7vk_chat'        => (int) ( $expectations['chat_count'] ?? 0 ),
+		'cf7vk_channel'     => (int) ( $expectations['channel_count'] ?? 0 ),
+		'wpcf7_contact_form' => (int) ( $expectations['form_count'] ?? 0 ) + 1,
+	];
+
+	foreach ( $expected_posts as $post_type => $expected ) {
+		if ( $expected !== (int) ( $post_counts[ $post_type ] ?? -1 ) ) {
+			$errors[] = "{$label}: post count mismatch for {$post_type}.";
+		}
+	}
+
+	$expected_relation_total = (int) ( $expectations['relation_count_total'] ?? 0 ) + (int) ( $expectations['damaged_relation_count'] ?? 0 );
+	if ( $expected_relation_total !== (int) ( $relations['total'] ?? -1 ) ) {
+		$errors[] = "{$label}: relation total mismatch.";
+	}
+
+	foreach ( $relation_counts as $relation => $expected ) {
+		$expected_count = (int) $expected;
+
+		if ( (int) ( $relations['by_relation'][ $relation ] ?? 0 ) < $expected_count ) {
+			$errors[] = "{$label}: relation count for {$relation} is below expected fixture count.";
+		}
+	}
+
+	if ( ! empty( $relations['duplicate_signatures'] ) ) {
+		$errors[] = "{$label}: duplicate relation signatures exist.";
+	}
+}
+
 function cf7vk_e2_error( array $result ): void {
 	if ( class_exists( 'WP_CLI' ) ) {
 		WP_CLI::error( wp_json_encode( $result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) );
@@ -259,6 +306,9 @@ $before = [
 	'migration'   => cf7vk_e2_public_migration_state(),
 	'fingerprint' => cf7vk_e2_fingerprint(),
 ];
+$expectations = cf7vk_e2_fixture_expectations();
+$repair_before = null;
+$repair_after = null;
 
 $migration_class::getInstance()->migrate( 'characterization', $source_version, $target_version );
 $after_first = [
@@ -294,10 +344,37 @@ if ( $after_second['migration']['attempts'] !== $after_first['migration']['attem
 	$errors[] = 'Second migration run was not idempotent; attempts changed.';
 }
 
+cf7vk_e2_assert_fixture_counts( $after_first['fingerprint'], $expectations, 'after_first', $errors );
+cf7vk_e2_assert_fixture_counts( $after_second['fingerprint'], $expectations, 'after_second', $errors );
+
+$maintenance_class = 'iTRON\\cf7Vk\\Maintenance';
+
+if ( class_exists( $maintenance_class ) ) {
+	$repair_before = $maintenance_class::buildRepairPlan();
+	$expected_repair_connections = (int) ( $expectations['expect_repair_connections'] ?? 0 );
+
+	if ( $expected_repair_connections > 0 ) {
+		if ( (int) ( $repair_before['planned']['delete_connections'] ?? 0 ) < $expected_repair_connections ) {
+			$errors[] = 'Repair dry-run did not detect expected damaged connections.';
+		}
+
+		$repair_after = $maintenance_class::runRepair( $maintenance_class::REPAIR_MODE_APPLY );
+
+		if ( (int) ( $repair_after['applied']['deleted_connections'] ?? 0 ) < $expected_repair_connections ) {
+			$errors[] = 'Repair apply did not delete expected damaged connections.';
+		}
+	} elseif ( ! empty( $repair_before['planned']['delete_connections'] ) ) {
+		$errors[] = 'Repair dry-run planned unexpected connection deletions for a healthy fixture.';
+	}
+}
+
 $result = [
 	'ok'             => empty( $errors ),
 	'source_version' => $source_version,
 	'target_version' => $target_version,
+	'fixture_expectations' => $expectations,
+	'repair_before'  => $repair_before,
+	'repair_after'   => $repair_after,
 	'before'         => $before,
 	'after_first'    => $after_first,
 	'after_second'   => $after_second,

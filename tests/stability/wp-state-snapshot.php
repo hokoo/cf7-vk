@@ -112,6 +112,11 @@ $option_prefixes = [
 	'vk_notifications_',
 ];
 $options = [];
+$fixture_expectations = get_option( 'cf7vk_e1_fixture_expectations', [] );
+
+if ( ! is_array( $fixture_expectations ) ) {
+	$fixture_expectations = [];
+}
 
 foreach ( $option_prefixes as $prefix ) {
 	// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -270,6 +275,7 @@ $fingerprint_source = [
 		],
 	],
 	'options'     => $options,
+	'fixture'     => $fixture_expectations,
 	'post_counts' => $post_counts,
 	'tables'      => array_map(
 		static fn( array $table ): array => [
@@ -294,6 +300,7 @@ echo wp_json_encode(
 		'active_plugins'  => array_values( array_map( 'strval', (array) get_option( 'active_plugins', [] ) ) ),
 		'cron'            => $cron,
 		'options'         => $options,
+		'fixture_expectations' => $fixture_expectations,
 		'post_counts'     => $post_counts,
 		'tables'          => $tables,
 		'relations'       => $relations,

@@ -39,8 +39,8 @@ Implementation progress as of 2026-08-31:
 - `T3. Add Stability Source Manifest And Lifecycle Smoke Harness`: completed for the current lifecycle smoke contract.
 - `T4. Implement Maintenance Lifecycle, Repair, And Log Retention`: completed.
 - `T5. Harden Migration Runner State, Locks, And Recovery`: completed.
-- `T6. Add Migration And Lifecycle Characterization Evidence`: in progress; migration state and idempotency characterization is integrated, relation fixture expansion remains.
-- Next execution-ready tasks: complete the remaining T6 relation-fixture slice and start `T7. Introduce VK Gateway Contract And Recording Fake`.
+- `T6. Add Migration And Lifecycle Characterization Evidence`: completed.
+- Next execution-ready task: `T7. Introduce VK Gateway Contract And Recording Fake`.
 
 ## Reference Stability Scope
 
@@ -148,6 +148,7 @@ Status as of 2026-08-31:
 - mitigated by T5;
 - PHP migration tests passed after implementation: 58 tests, 0 failures, 1 PHP 8.1 dependency-heavy skip on local PHP 8.0.30;
 - full lifecycle smoke passed after implementation: `/tmp/cf7vk-e1-20260831T152054Z-8070.KTunYL/results/summary.json`, 129 steps, 128 passed, 1 skipped for missing public `v-0.1.2`, 0 failures;
+- full lifecycle and migration characterization smoke passed after T6 completion: `/tmp/cf7vk-e1-20260831T160122Z-37689.bEHEDH/results/summary.json`, 165 steps, 165 passed, 0 skipped, 0 failures;
 - current candidate ZIP SHA-256: `5dd83b81f51a5f3216176fbd58ca00d8c20d69485d7bd4da97873f00838232bf`.
 
 ### F3. PHP test wrapper is absent
