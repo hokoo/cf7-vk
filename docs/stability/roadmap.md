@@ -53,8 +53,9 @@ Implementation progress as of 2026-09-01:
 - `T17. Add Release Workflow, Audits, Support Matrix, And Plugin Check Gate`: completed.
 - `T18. Add Real WordPress REST/Admin And Browser Lifecycle Smoke`: completed.
 - `T19. Add Fake VK Form Delivery And Admin Setup E2E`: completed.
-- `QA1`, `QA2`, `QA3`, `QA4`, and `QA6`: completed.
-- Remaining decision-gated task: `T20. Add Manual WordPress.org Promotion Gate`.
+- `T20. Add Release-Created WordPress.org Promotion Gate`: completed.
+- `QA1` through `QA6`: completed.
+- No remaining Stability hardening decision gate; `T21` remains deferred by design for post-rollout taxonomy cleanup.
 
 ## Reference Stability Scope
 
@@ -105,7 +106,7 @@ Initially missing or incomplete relative to the Telegram Stability standard:
 - no narrow VK gateway interface or normalized result object;
 - no transactional credential validation endpoint;
 - no CI gate equivalent to Telegram `build-zip.yml`;
-- no WordPress.org promotion workflow equivalent to Telegram `promote-wordpress-org.yml`.
+- no gated WordPress.org production promotion in the release workflow.
 
 ## High-Confidence Findings
 
@@ -203,21 +204,22 @@ Risk:
 - release ZIP reproducibility is not proven;
 - dev files, maps, test files, package manifests, logs, dumps, or hidden files can slip into an artifact;
 - Plugin Check and dependency audits are not blocking release evidence;
-- WordPress.org deployment is coupled to release publication rather than an evidence-backed promotion gate.
+- WordPress.org deployment can run from release publication without first proving deterministic artifact, lifecycle, browser, fake transport, and support-matrix evidence.
 
 Recommended action:
 
 - port Telegram E5 release scripts with `cf7-vk` defaults;
 - replace the old release workflow with a verify/publish split;
-- add a separate manual promotion workflow with canary, rollback, exact SHA, and environment approval.
+- preserve VK's release-created WordPress.org deployment model, but make it depend on the verified ZIP and fail-closed Stability gates.
 
-Status as of 2026-08-31:
+Status as of 2026-09-01:
 
-- mitigated for PR/release ZIP verification by T2 and T17;
+- mitigated by T2, T17, T18, T19, and T20;
 - deterministic local ZIP builder and fail-closed ZIP validator are implemented and passing;
-- `.github/workflows/build-zip.yml` replaces the old release workflow and runs source checks, PHP tests, React tests, release audits, deterministic ZIP validation, reproducibility, Plugin Check, current lifecycle smoke, and release support matrix evidence;
+- `.github/workflows/build-zip.yml` replaces the old release workflow and runs source checks, PHP tests, React tests, release audits, deterministic ZIP validation, reproducibility, Plugin Check, lifecycle/support matrix evidence, REST smoke, browser smoke, and fake VK E2E before publication;
 - Plugin Check passes with 0 errors and 5 warnings on the current candidate ZIP;
-- WordPress.org production promotion remains intentionally separate and is tracked by T20.
+- prereleases upload the verified GitHub release ZIP and update the `plugin-dist` canary branch only;
+- stable releases fail closed without WordPress.org repository configuration, deploy the unpacked verified ZIP through `10up/action-wordpress-plugin-deploy@stable`, and update the `stable` mirror branch only after the WordPress.org deploy step succeeds.
 
 ### F5. Logs are neither redacted nor bounded
 

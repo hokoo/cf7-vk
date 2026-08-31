@@ -18,7 +18,7 @@ Recommended order:
 4. `T6`, `T7`, `T8`, `T9`
 5. `T10`, `T11`, `T12`, `T13`
 6. `T14`, `T15`, `T16`
-7. `T17`, `T18`, `T19`
+7. `T17`, `T18`, `T19`, `T20`
 8. `QA1` through `QA6`
 
 Execution status as of 2026-09-01:
@@ -43,12 +43,12 @@ Execution status as of 2026-09-01:
 - `T17`: completed; release workflow, release audits, Plugin Check, release ZIP negative tests, and support matrix wrapper are implemented.
 - `T18`: completed; real WordPress REST/admin smoke and Playwright browser lifecycle smoke are implemented and passing locally.
 - `T19`: completed; fake VK public-submit, partial-failure, admin setup, deletion safety, and redacted evidence smoke passes locally.
-- `T20`: waiting for owner approval of the WordPress.org production promotion policy.
+- `T20`: completed; WordPress.org production deployment now runs from the release-created publish job after verified release gates pass.
 - `QA1`: completed after fixing the missing E1 uninstall cleanup assertion.
 - `QA2`: completed; lifecycle and migration integrity QA passed.
 - `QA3`: completed; VK gateway, redaction, credentials, Long Poll, and delivery QA passed.
 - `QA4`: completed after fixing E4 smoke fail-closed evidence handling.
-- `QA5`: waiting on `T20`.
+- `QA5`: completed; release-created GitHub/WordPress.org publication gate QA passed.
 - `QA6`: completed; fake VK E2E QA passed against the current rebuilt candidate ZIP.
 
 Completed first execution batch after approval:
@@ -56,9 +56,10 @@ Completed first execution batch after approval:
 - `T1. Add PHP Test Runner And Baseline Unit Harness`
 - `T2. Add Deterministic Release ZIP Builder And Validator`
 
-Current next execution target:
+Current delivery state:
 
-- `T20. Add Manual WordPress.org Promotion Gate`, after owner approval of the WordPress.org production promotion policy.
+- Stability hardening is implementation-complete through `T20` and independently QA-reviewed through `QA6`.
+- Merge/release readiness now depends on GitHub CI for the PR branch and configured repository credentials for the release-created WordPress.org deploy.
 
 ## S0. Approve VK Stability Contract And First Batch
 
@@ -1394,7 +1395,7 @@ Notes/Risks:
   - updates to `plugin-dir/readme.txt`;
   - Plugin Check suppressions for non-rendered exception payload forwarding in `plugin-dir/lib/VkApi.php` and `plugin-dir/lib/Bot.php`.
 - `.github/workflows/build-zip.yml` now runs PHP lint, `composer test`, React tests on Node 20, release dependency audits, release gate self-tests, deterministic ZIP build/validation, reproducibility comparison, Plugin Check, current lifecycle smoke on push/PR, and full support matrix on release.
-- The old release workflow was removed so release publication no longer goes through `install/build-plugin-package.sh` or the direct WordPress.org deployment path.
+- The old release workflow was removed so release publication no longer goes through `install/build-plugin-package.sh`; T20 reintroduced WordPress.org deployment on release publication, but only after the full verified release gates pass.
 - PR/release REST/admin, browser, and fake VK smoke steps are already wired but guarded by `hashFiles(...)` until `T18/T19` add the corresponding scripts.
 - The release support matrix pins Contact Form 7 versions:
   - `minimum-wp60-php81-cf7-577` uses WordPress 6.0, PHP 8.1, and Contact Form 7 5.7.7;
@@ -1593,53 +1594,52 @@ Completion Evidence:
 - `tests/stability/e6-form-delivery-smoke.sh --skip-browser-install` passed against the rebuilt current candidate ZIP: summary `/tmp/cf7vk-e6-delivery-20260831T200428Z-38722.gGXQCU/results/summary.json`, 45 passed steps, 0 failed, candidate SHA-256 `917a50f6f30b0ba5386d232dc5b36cc073d6f0d1baf2514ef8bbe73af6ecdaf9`.
 - E6 browser result passed all 25 required checks: public CF7 render/submit, two expected `messages.send` attempts, no unexpected recipient, partial first-recipient failure with later-recipient continuity, no page/console errors, admin bot/channel/form/chat/relation setup, assigned-chat delivery, redacted evidence, and deletion safety.
 
-## T20. Add Manual WordPress.org Promotion Gate
+## T20. Add Release-Created WordPress.org Promotion Gate
 
-Status: waiting_dependency
+Status: completed
 
-Goal: separate verified release artifact creation from production WordPress.org promotion.
+Goal: keep the existing release-created WordPress.org publication model, but make production promotion depend on the verified Stability release gates and the validated release ZIP artifact.
 
 Scope:
 
-- Add `.github/workflows/promote-wordpress-org.yml` adapted from Telegram.
-- Add `scripts/verify-promotion-evidence.sh`.
-- Add `scripts/deploy-wordpress-svn.sh`.
-- Add `scripts/svn-status.py`.
-- Require manual inputs:
-  - final release tag;
-  - successful canary run ID;
-  - candidate SHA-256;
-  - rollback version;
-  - rollback SHA-256;
-  - rollback DB snapshot SHA-256 when support matrix creates one;
-  - explicit confirmation string.
-- Verify canary, final release, exact ZIP hash, rollback baseline, support/browser/fake VK evidence, and environment approval before SVN deployment.
-- Update stable mirror only after WordPress.org deployment succeeds.
+- Extend `.github/workflows/build-zip.yml` instead of adding a standalone promotion workflow.
+- Keep `release: published` as the production deployment trigger, matching the previous VK release process.
+- Require the `publish` job to depend on the full `verify` job.
+- Download and revalidate the exact ZIP artifact produced by `verify`.
+- Upload the verified ZIP to the GitHub release.
+- For prereleases, push the verified plugin build to the `plugin-dist` canary branch and skip WordPress.org deployment.
+- For stable releases, fail closed unless `WPORG_PLUGIN_SLUG`, `WPORG_USERNAME`, and `WPORG_PASSWORD` are configured.
+- For stable releases, deploy the unpacked verified ZIP contents to WordPress.org SVN with `10up/action-wordpress-plugin-deploy@stable`.
+- Update the `stable` distribution branch only after the WordPress.org deployment step succeeds.
 
 Out of Scope:
 
 - Creating the GitHub release itself.
 - Live VK testing.
+- A separate manual WordPress.org promotion workflow for this release.
 
 DoR:
 
 - `T17` completed.
 - `T18` completed.
 - `T19` completed.
-- Owner approves WordPress.org production promotion policy.
+- Owner approved the release-created WordPress.org production promotion policy in chat on 2026-09-01.
 
 DoD:
 
-- Promotion workflow fails closed if any required input or evidence is missing or mismatched.
-- Deployment script is race-free and idempotent.
-- Promotion artifact bundle is uploaded before deployment.
+- Release-created publication cannot run until source tests, dependency audits, deterministic ZIP validation, reproducibility, Plugin Check, lifecycle matrix, REST smoke, browser smoke, and fake VK E2E gates pass.
+- Stable release publication fails before deployment if required WordPress.org configuration is missing.
+- Stable release publication deploys only the unpacked, revalidated release ZIP contents.
+- Prerelease publication updates only the `plugin-dist` canary branch.
+- Stable mirror branch is updated only after WordPress.org deployment succeeds.
 
 AC:
 
-- Given canary run SHA differs from the final release tag SHA, then promotion fails.
-- Given candidate ZIP SHA differs from the approved SHA, then promotion fails.
-- Given WordPress.org current version changes while approval is pending, then deployment fails.
-- Given SVN status has unexpected changes after deploy staging, then deployment fails before commit.
+- Given a release is published as prerelease, then the workflow uploads the verified ZIP and pushes the unpacked plugin to `plugin-dist` without running WordPress.org SVN deployment.
+- Given a release is published as stable and the `verify` job fails, then neither GitHub release artifact upload, WordPress.org deployment, nor `stable` branch update runs.
+- Given a stable release is published with missing `WPORG_PLUGIN_SLUG`, `WPORG_USERNAME`, or `WPORG_PASSWORD`, then the publish job fails before WordPress.org deployment.
+- Given the downloaded release ZIP does not validate or does not unpack to the expected plugin root, then publication fails.
+- Given the WordPress.org deploy action fails for a stable release, then the `stable` distribution branch is not updated.
 
 Dependencies:
 
@@ -1649,7 +1649,9 @@ Dependencies:
 
 Notes/Risks:
 
-- This task is security and release sensitive. It should be reviewed separately from feature hardening.
+- Implemented in `.github/workflows/build-zip.yml`.
+- This task is security and release sensitive and was covered by `QA5`.
+- The local repository cannot execute the actual WordPress.org SVN deployment; production execution requires GitHub repository variables `WPORG_PLUGIN_SLUG`, `WPORG_USERNAME`, and secret `WPORG_PASSWORD`.
 
 ## T21. Defer Test Suite Taxonomy Refactor
 
@@ -1892,13 +1894,13 @@ Completion Evidence:
 
 ## QA5. Independent QA For Release And Promotion Gates
 
-Status: waiting_dependency
+Status: completed
 
-Goal: verify `T17` and `T20` before release/promotion is trusted.
+Goal: verify `T17` and `T20` before release-created GitHub/WordPress.org publication is trusted.
 
 Scope:
 
-- Review GitHub workflows, audits, Plugin Check, support matrix, promotion evidence, SVN deployment, and rollback verification.
+- Review GitHub workflows, audits, Plugin Check, support matrix, REST/browser/fake VK evidence, release artifact upload, WordPress.org SVN deployment, and distribution branch updates.
 - Run local script tests where possible and inspect CI dry-run evidence.
 
 Out of Scope:
@@ -1908,7 +1910,7 @@ Out of Scope:
 DoR:
 
 - `T17` completed.
-- `T20` completed after owner approval of the WordPress.org production promotion policy.
+- `T20` completed after owner approval of the release-created WordPress.org production promotion policy.
 - Required CI artifacts are available or local substitutes are documented.
 
 DoD:
@@ -1918,7 +1920,9 @@ DoD:
 AC:
 
 - Given evidence is missing, then gates fail closed.
-- Given rollback baseline mismatches WordPress.org state, then promotion fails.
+- Given a stable release has missing WordPress.org configuration, then publication fails before deployment.
+- Given a prerelease is published, then WordPress.org deployment is skipped and only `plugin-dist` is updated.
+- Given a stable WordPress.org deploy fails, then the `stable` branch update is not reached.
 
 Dependencies:
 
@@ -1927,7 +1931,17 @@ Dependencies:
 
 Notes/Risks:
 
-- Promotion is a human decision gate even after QA passes.
+- GitHub Actions execution of the actual WordPress.org SVN deploy is intentionally not run locally.
+
+Completion Evidence:
+
+- Independent QA verdict: pass, with no blocking findings.
+- QA confirmed `publish` depends on `verify`, so GitHub release publication, WordPress.org deployment, and distribution branch updates do not run after failed release gates.
+- QA confirmed the publish job downloads and revalidates the verified ZIP, unpacks it, and uses `./release-work/${PLUGIN_SLUG}` for WordPress.org deployment.
+- QA confirmed stable releases fail closed when `WPORG_PLUGIN_SLUG`, `WPORG_USERNAME`, or `WPORG_PASSWORD` is missing.
+- QA confirmed prereleases skip WordPress.org deployment and update only `plugin-dist`.
+- QA confirmed stable releases update the `stable` distribution branch only after the WordPress.org deploy step succeeds under default GitHub Actions step ordering.
+- QA ran YAML parsing and `git diff --check`; `actionlint` was not installed in the local environment.
 
 ## QA6. Independent QA For Fake VK E2E
 

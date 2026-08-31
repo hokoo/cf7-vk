@@ -192,12 +192,16 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish verified GitHub release artifact
+    name: Publish verified release artifact and promotion
     runs-on: ubuntu-latest
     needs: verify
     if: ${{ github.event_name == 'release' }}
     permissions:
       contents: write
+    env:
+      WPORG_PLUGIN_SLUG: ${{ vars.WPORG_PLUGIN_SLUG }}
+      WPORG_USERNAME: ${{ vars.WPORG_USERNAME }}
+      WPORG_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
 
     steps:
       - name: Check out the source code
@@ -220,28 +224,65 @@ jobs:
           mkdir -p release-work
           unzip -q "${ZIP_PATH}" -d release-work
 
+      - name: Validate WordPress.org deployment configuration
+        if: ${{ github.event.release.prerelease == false }}
+        shell: bash
+        run: |
+          if [ -z "${WPORG_PLUGIN_SLUG}" ]; then
+            echo "Repository variable WPORG_PLUGIN_SLUG is required for stable WordPress.org deployment." >&2
+            exit 1
+          fi
+
+          if [ -z "${WPORG_USERNAME}" ]; then
+            echo "Repository variable WPORG_USERNAME is required for stable WordPress.org deployment." >&2
+            exit 1
+          fi
+
+          if [ -z "${WPORG_PASSWORD}" ]; then
+            echo "Repository secret WPORG_PASSWORD is required for stable WordPress.org deployment." >&2
+            exit 1
+          fi
+
+          if [ ! -d "release-work/${PLUGIN_SLUG}" ]; then
+            echo "Verified release ZIP did not unpack to release-work/${PLUGIN_SLUG}." >&2
+            exit 1
+          fi
+
       - name: Upload Release Artifact
         run: gh release upload "${{ github.event.release.tag_name }}" "${ZIP_PATH}" --clobber
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: Push prerelease canary to plugin-dist
-        if: ${{ github.event.release.prerelease == true }}
+      - name: Deploy stable release to WordPress.org
+        if: ${{ github.event.release.prerelease == false }}
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        env:
+          SVN_USERNAME: ${{ env.WPORG_USERNAME }}
+          SVN_PASSWORD: ${{ env.WPORG_PASSWORD }}
+          ASSETS_DIR: ./.wordpress-org
+          BUILD_DIR: ./release-work/${{ env.PLUGIN_SLUG }}
+          SLUG: ${{ env.WPORG_PLUGIN_SLUG }}
+          VERSION: ${{ needs.verify.outputs.release_version }}
+
+      - name: Push verified plugin build to distribution branch
+        shell: bash
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          if git ls-remote --exit-code --heads origin plugin-dist >/dev/null 2>&1; then
-            git fetch origin plugin-dist
-            git worktree add --force dist-worktree origin/plugin-dist
+          target_branch="$([ "${{ github.event.release.prerelease }}" = "true" ] && echo "plugin-dist" || echo "stable")"
+
+          if git ls-remote --exit-code --heads origin "${target_branch}" >/dev/null 2>&1; then
+            git fetch origin "${target_branch}"
+            git worktree add --force dist-worktree "origin/${target_branch}"
           else
             git worktree add --detach dist-worktree
-            git -C dist-worktree checkout --orphan plugin-dist
+            git -C dist-worktree checkout --orphan "${target_branch}"
             git -C dist-worktree rm -rf . >/dev/null 2>&1 || true
           fi
 
           find dist-worktree -mindepth 1 -maxdepth 1 -not -name '.git' -exec rm -rf {} +
-          rsync -a --delete --exclude '.git' release-work/message-bridge-for-contact-form-7-and-vk/ dist-worktree/
+          rsync -a --delete --exclude '.git' "release-work/${PLUGIN_SLUG}/" dist-worktree/
 
           git -C dist-worktree add -A
           git -C dist-worktree add -f vendor react/build
@@ -250,7 +291,7 @@ jobs:
             echo "No changes to commit"
           else
             git -C dist-worktree commit -m "Update plugin build from release ${{ github.event.release.tag_name }}"
-            git -C dist-worktree push origin HEAD:plugin-dist
+            git -C dist-worktree push origin HEAD:"${target_branch}"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
