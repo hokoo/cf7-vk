@@ -4,7 +4,7 @@ Tags: contact form 7,vk,vkontakte
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -90,6 +90,9 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 
 == Changelog ==
 
+= 1.1.0 =
+* Fixed the VK settings submenu for the new Contact Form 7 dashboard menu while retaining compatibility with older Contact Form 7 versions.
+
 = 1.0.0 =
 * Added stability hardening for plugin lifecycle, activation, deactivation, uninstall cleanup, relation repair, log retention, and migration recovery.
 * Added a VK gateway contract with fake transport coverage, sanitized diagnostics, transactional credential validation, safer Long Poll cursor handling, and per-recipient delivery results.
@@ -121,6 +124,9 @@ Long Poll documentation: https://dev.vk.com/ru/api/bots-long-poll/getting-starte
 * Delivery is restricted to active dialogs, and the admin UI now exposes copyable auth commands and channel title editing.
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Restores access to VK settings from the Contact Form 7 dashboard menu.
 
 = 1.0.0 =
 Major stability hardening release with safer migrations, redacted diagnostics, resilient VK delivery, admin UI error handling, and verified release gates.

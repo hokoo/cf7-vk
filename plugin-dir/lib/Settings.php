@@ -16,8 +16,11 @@ class Settings {
 		add_action(
 			'admin_menu',
 			static function () {
+				global $admin_page_hooks;
+				$parent = isset( $admin_page_hooks['wpcf7-dashboard'] ) ? 'wpcf7-dashboard' : 'wpcf7';
+
 				add_submenu_page(
-					'wpcf7',
+					$parent,
 					__( 'Message Bridge for Contact Form 7 and VK', 'message-bridge-for-contact-form-7-and-vk' ),
 					__( 'VK', 'message-bridge-for-contact-form-7-and-vk' ),
 					self::getCaps(),
